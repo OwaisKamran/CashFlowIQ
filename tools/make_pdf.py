@@ -59,7 +59,7 @@ try {
     $d.Repaginate()
     foreach ($t in $d.TablesOfContents) { $t.Update() }
     $d.Save()
-    $d.ExportAsFixedFormat($Pdf, 17)
+    $d.ExportAsFixedFormat($Pdf, 17, $false, 0, 0, 1, 1, 0, $true)
     "pages: " + $d.ComputeStatistics(2)
     $d.Close($false)
 } finally { $w.Quit() }
@@ -349,7 +349,7 @@ def build(doc: Doc, url: str):
     centre("CashFlow IQ", 26, 10, "Cambria", True, NAVY)
     centre("Business Liquidity & Cash Flow Decision Expert System", 14, 40, "Cambria", color=DARK)
     centre("Code Explanation", 12, 4)
-    centre("CT-262 Introduction to Artificial Intelligence (IAI) \u2013 CCP", 12, 4)
+    centre("CT-262 Introduction to Artificial Intelligence (IAI)", 12, 4)
     centre("NED University of Engineering & Technology", 12, 48)
     doc.cover_table([("Student name", STUDENT), ("Roll No", ROLL_NO), ("Submitted to", SUBMITTED_TO),
                      ("Date", f"{date.today():%d %B %Y}"), ("Live application", url),

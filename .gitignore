@@ -16,6 +16,7 @@ env/
 screenshots/
 *_screenshots/
 extras/
+submission/
 *.log
 
 # Streamlit secrets (never commit)

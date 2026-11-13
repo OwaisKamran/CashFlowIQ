@@ -1,5 +1,8 @@
 # 💧 CashFlow IQ – Business Liquidity & Cash Flow Decision Expert System
 
+**Live app:** https://cashflow-iq.streamlit.app/  
+**Source code:** https://github.com/OwaisKamran/CashFlowIQ
+
 A **rule-based expert system** (no machine learning, no AI APIs) that acts like a
 *doctor for business cash flow* for small and medium businesses in Pakistan (PKR).
 
@@ -14,9 +17,6 @@ A **rule-based expert system** (no machine learning, no AI APIs) that acts like 
 | Explanation | **HOW** (full rule-firing trace) and **WHY** (questions & decisions) |
 | UI | Streamlit (5 pages in 3 sidebar sections) – **For business owners:** Consultation, Quick Diagnosis · **For experts:** Knowledge Base, Knowledge Acquisition · **Info:** About |
 | Tests | 122 pytest tests (engine, rules, data sufficiency, wizard steps, samples, UI) |
-
-**Live app:** https://cashflow-iq.streamlit.app/  
-**Source code:** https://github.com/OwaisKamran/CashFlowIQ
 
 ---
 
