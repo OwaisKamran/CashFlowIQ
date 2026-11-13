@@ -79,13 +79,15 @@ def render(q, prefix, store, error=None, why=True):
         if q.kind == "text":
             st.text_input(q.text, key=key, placeholder=q.example, help=hint, max_chars=80)
         elif q.kind == "amount":
-            with st.container(key=f"cfrs_{key}"):           # CSS adds the "Rs" prefix
+            with st.container(key=f"cfrs_{key}"):           # "Rs" prefix (CSS) + input filter
                 st.text_input(q.text, key=key, placeholder=q.example, help=hint,
                               on_change=_format_amount, args=(key,))
         elif q.kind in ("days", "percent"):
-            st.number_input(q.text, key=key, min_value=float(q.min), max_value=float(q.max),
-                            step=1.0, format="%.0f" if q.kind == "days" else "%.1f",
-                            placeholder=q.example, help=hint)
+            kind = "cfdays" if q.kind == "days" else "cfpct"  # key read by the input filter script
+            with st.container(key=f"{kind}_{key}"):
+                st.number_input(q.text, key=key, min_value=float(q.min), max_value=float(q.max),
+                                step=1.0, format="%.0f" if q.kind == "days" else "%.1f",
+                                placeholder=q.example, help=hint)
         elif q.kind == "choice":
             labels = CHOICE_LABELS.get(q.key, {})
             if len(q.options) <= 3:

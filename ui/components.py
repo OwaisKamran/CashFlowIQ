@@ -193,13 +193,100 @@ _ENTER_JS = """
 """
 
 
+# number inputs: allow only digits, commas (money) and one decimal point (percent)
+_FILTER_JS = """
+(function () {
+  if (window.__cfInputFilter) return;
+  window.__cfInputFilter = true;
+  var RULES = [                                       // container key prefix -> allowed input
+    {sel: '[class*="st-key-cfrs_"] input',   chars: /[0-9,]/, dot: false},   // money
+    {sel: '[class*="st-key-cfdays_"] input', chars: /[0-9]/,  dot: false},   // days
+    {sel: '[class*="st-key-cfpct_"] input',  chars: /[0-9.]/, dot: true}     // percentages
+  ];
+  function ruleFor(el) {
+    if (!el || el.tagName !== "INPUT") return null;
+    for (var i = 0; i < RULES.length; i++) if (el.matches(RULES[i].sel)) return RULES[i];
+    return null;
+  }
+  function clean(text, rule, current) {               // keep allowed characters, at most one "."
+    var out = "", dotUsed = rule.dot && current.indexOf(".") >= 0;
+    for (var i = 0; i < text.length; i++) {
+      var c = text.charAt(i);
+      if (!rule.chars.test(c)) continue;
+      if (c === ".") { if (dotUsed) continue; dotUsed = true; }
+      out += c;
+    }
+    return out;
+  }
+  function selection(el) {                            // number inputs have no selection API
+    try { if (el.selectionStart !== null) return [el.selectionStart, el.selectionEnd]; } catch (e) {}
+    return null;
+  }
+  function insert(el, rule, text) {                   // React-safe value change
+    var sel = selection(el), value = el.value, next, caret;
+    var kept = sel ? value.slice(0, sel[0]) + value.slice(sel[1]) : "";
+    var add = clean(text, rule, kept);
+    if (sel) { next = value.slice(0, sel[0]) + add + value.slice(sel[1]); caret = sel[0] + add.length; }
+    else { next = add; }
+    var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(el, next);
+    el.dispatchEvent(new Event("input", {bubbles: true}));
+    if (sel) { try { el.setSelectionRange(caret, caret); } catch (e) {} }
+  }
+  function blocked(el, rule, ch) {
+    if (!rule.chars.test(ch)) return true;
+    if (ch !== ".") return false;
+    var sel = selection(el), value = el.value;
+    var kept = sel ? value.slice(0, sel[0]) + value.slice(sel[1]) : value;
+    return kept.indexOf(".") >= 0;
+  }
+  document.addEventListener("keydown", function (ev) {        // typing on a keyboard
+    var rule = ruleFor(ev.target);
+    if (!rule || ev.ctrlKey || ev.metaKey || ev.altKey || ev.key.length !== 1) return;
+    if (blocked(ev.target, rule, ev.key)) ev.preventDefault();
+  }, true);
+  document.addEventListener("beforeinput", function (ev) {    // phone keyboards, autofill
+    var rule = ruleFor(ev.target);
+    if (!rule || !ev.data || ev.inputType === "insertFromPaste") return;
+    for (var i = 0; i < ev.data.length; i++) {
+      if (blocked(ev.target, rule, ev.data.charAt(i))) { ev.preventDefault(); return; }
+    }
+  }, true);
+  document.addEventListener("paste", function (ev) {          // paste: strip what is not allowed
+    var rule = ruleFor(ev.target);
+    if (!rule) return;
+    ev.preventDefault();
+    insert(ev.target, rule, (ev.clipboardData || window.clipboardData).getData("text") || "");
+  }, true);
+  document.addEventListener("drop", function (ev) {           // drag-and-drop text
+    if (ruleFor(ev.target)) ev.preventDefault();
+  }, true);
+  document.addEventListener("focusin", function (ev) {        // remember the last valid value
+    if (ruleFor(ev.target)) ev.target.__cfLast = ev.target.value;
+  }, true);
+  document.addEventListener("input", function (ev) {          // keep within the field's max
+    var el = ev.target, rule = ruleFor(el);
+    if (!rule) return;
+    if (el.max !== "" && el.value !== "" && Number(el.value) > Number(el.max)) {
+      var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(el, el.__cfLast || "");
+      el.dispatchEvent(new Event("input", {bubbles: true}));
+      return;
+    }
+    el.__cfLast = el.value;
+  }, true);
+})();
+"""
+
+
 def enable_enter_navigation():
-    """Inject the Enter-key script into the page once."""
+    """Inject the Enter-key and number-input filter scripts into the page once."""
     import json
-    loader = ("<script>var d = window.parent.document;"
-              "if (!d.getElementById('cf-enter-nav')) {"
-              "var s = d.createElement('script'); s.id = 'cf-enter-nav';"
-              f"s.textContent = {json.dumps(_ENTER_JS)}; d.head.appendChild(s);}}</script>")
+    loader = "<script>var d = window.parent.document;" + "".join(
+        f"if (!d.getElementById('{sid}')) {{"
+        f"var s = d.createElement('script'); s.id = '{sid}';"
+        f"s.textContent = {json.dumps(js)}; d.head.appendChild(s);}}"
+        for sid, js in (("cf-enter-nav", _ENTER_JS), ("cf-input-filter", _FILTER_JS))) + "</script>"
     with st.sidebar:
         st.iframe(loader, height=1)
 

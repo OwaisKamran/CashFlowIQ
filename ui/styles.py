@@ -98,6 +98,10 @@ CSS = f"""
   [data-testid="stSidebarNavLink"][aria-current="page"] * {{ color: {TEAL_ON_DARK} !important;
       font-weight: 600; }}
   [data-testid="stSidebar"] hr {{ border-color: rgba(255, 255, 255, .12); }}
+  /* the 1px frame that loads the page scripts: keep it running but take it out of the layout */
+  [data-testid="stSidebar"] [data-testid="stElementContainer"]:has(iframe) {{
+      position: absolute !important; width: 0 !important; height: 0 !important; overflow: hidden;
+      opacity: 0; pointer-events: none; margin: 0 !important; }}
   [data-testid="stSidebar"] .cf-side-name {{ font-family: {HEAD_FONT}; font-weight: 700;
       font-size: 17px; color: #FFFFFF; }}
 
