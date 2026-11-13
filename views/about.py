@@ -6,11 +6,11 @@ import streamlit as st
 from knowledge_base.problems import PROBLEMS
 from knowledge_base.questions import QUESTIONS
 from knowledge_base.rules import RULES
-from ui.components import section
+from ui.components import page_header, section
 
 kinds = Counter(r.kind for r in RULES)
 
-st.markdown("<div class='cf-eyebrow'>About</div>", unsafe_allow_html=True)
+page_header("About", "How the CashFlow IQ expert system works.", "info")
 st.title("About CashFlow IQ")
 st.markdown(
     "CashFlow IQ is a rule-based **expert system** that diagnoses the liquidity and cash-flow "
@@ -21,12 +21,12 @@ st.markdown("<p class='cf-muted'>No machine learning and no AI services are used
             "conclusion comes from explicit IF-THEN rules that can be listed, traced and "
             "explained.</p>", unsafe_allow_html=True)
 
-section("Architecture")
+section("Architecture", "account_tree")
 st.graphviz_chart("""
 digraph G {
   rankdir=TB; bgcolor="transparent"; nodesep=0.5; ranksep=0.45;
   node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=12,
-        fillcolor="#F3F5F8", color="#1F3A5F", fontcolor="#1F2937"];
+        fillcolor="#F7F9FC", color="#1E3A5F", fontcolor="#1F2937"];
   edge [color="#6B7280", fontname="Helvetica", fontsize=9, fontcolor="#4B5563"];
 
   user   [label="Business owner", shape=ellipse, fillcolor="#FFFFFF"];
@@ -52,7 +52,7 @@ digraph G {
 }
 """, width="content")
 
-section("The six components")
+section("The six components", "widgets")
 components = [
     ("1. User interface", "app.py, views/",
      "Two ways to consult the system: a guided step-by-step Consultation and a one-page "
@@ -81,7 +81,7 @@ for title, where, text in components:
     st.markdown(f"**{title}** <span class='cf-muted'>· <code>{where}</code></span><br>{text}",
                 unsafe_allow_html=True)
 
-section("Pages")
+section("Pages", "web")
 st.markdown("""
 The sidebar groups the pages into three sections:
 
@@ -92,7 +92,7 @@ The sidebar groups the pages into three sections:
 - **Info** - *About* (this page).
 """)
 
-section("Consultation (step-by-step wizard)")
+section("Consultation (step-by-step wizard)", "assignment")
 st.markdown("""
 The Consultation page guides a first-time user through six short steps:
 **Your business → Cash → Customers who owe you → Stock → Suppliers & loans → Warning signs**,
@@ -111,7 +111,7 @@ then a **review** screen and the **report**.
   automatically re-decides which later questions are needed.
 """)
 
-section("The report")
+section("The report", "description")
 st.markdown("""
 Plain English first: a 2–3 sentence summary generated from the facts and the problems the
 rules found, then **What you should do** (top three actions), **What we found**, and the
@@ -119,7 +119,7 @@ rules found, then **What you should do** (top three actions), **What we found**,
 is kept at the bottom for anyone who wants the reasoning.
 """)
 
-section("Data sufficiency")
+section("Data sufficiency", "fact_check")
 st.markdown("""
 An expert must not conclude without data. Before any analysis, the **Group 0 rules
 (R82–R94, highest priority)** check that the essential facts are present: cash in hand,
@@ -131,7 +131,7 @@ liquidity ratios cannot be computed when there is nothing to divide by. If anyth
 (R88–R92) warn about inconsistent inputs, such as receivables with zero sales.
 """)
 
-section("Status logic")
+section("Status logic", "speed")
 st.markdown("""
 After all diagnosis rules have fired, the health score is computed
 (100 − Σ severity weight × CF + strength bonus). Status rules then decide *Healthy*, *Watch*,
@@ -141,7 +141,7 @@ requires zero Critical and zero High problems - even merely Possible ones, which
 status to Watch.
 """)
 
-section("Knowledge sources & limitations")
+section("Knowledge sources & limitations", "menu_book")
 st.markdown("""
 **Where the knowledge comes from**
 
@@ -165,6 +165,6 @@ st.markdown("""
   what will happen.
 """)
 
-section("Technology")
+section("Technology", "code")
 st.markdown("Python 3.12+, Streamlit, pandas, pytest. The inference engine is written from "
             "scratch (no `experta`), so every line can be explained.")

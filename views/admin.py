@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from knowledge_base import validate_thresholds
+from ui.components import page_header
 
 
 def apply(values: dict):
@@ -12,8 +13,9 @@ def apply(values: dict):
     st.session_state.quick_result = None     # clear results made with old thresholds
 
 
+page_header("Knowledge Acquisition", "Tune the thresholds the rules use, without changing code.",
+            "tune")
 st.caption("This page is for experts and the knowledge engineer, not for business owners.")
-st.markdown("<div class='cf-eyebrow'>Knowledge acquisition</div>", unsafe_allow_html=True)
 st.title("Thresholds")
 st.markdown("Knowledge acquisition is how expert knowledge enters the system. Here a domain "
             "expert can tune **every numeric threshold** the rules use, without changing code. "
@@ -45,21 +47,22 @@ new_values = dict(zip(edited["Threshold"], edited["Value"]))
 changed = {k: v for k, v in new_values.items() if v != defaults[k]}
 
 c1, c2, c3 = st.columns(3)
-if c1.button("Apply to this session", type="primary", width="stretch"):
+if c1.button("Apply to this session", type="primary", width="stretch", icon=":material/check:"):
     errors = validate_thresholds(new_values, defaults)
     if errors:
         st.error("Not applied:\n\n" + "\n".join(f"- {e}" for e in errors))
     else:
         apply(new_values)
         st.success(f"Applied. {len(changed)} threshold(s) differ from the defaults.")
-if c2.button("Reset to defaults", width="stretch"):
+if c2.button("Reset to defaults", width="stretch", icon=":material/restart_alt:"):
     apply(defaults)
     st.session_state.pop("threshold_editor", None)
     st.rerun()
 
 export = {name: {**meta, "value": current[name]} for name, meta in table.items()}
 c3.download_button("Download thresholds.json", json.dumps(export, indent=2),
-                   file_name="thresholds.json", mime="application/json", width="stretch")
+                   file_name="thresholds.json", mime="application/json", width="stretch",
+                   icon=":material/download:")
 
 if changed:
     st.markdown("**Different from defaults:** " +
@@ -67,7 +70,7 @@ if changed:
 
 st.markdown("##### Upload thresholds")
 uploaded = st.file_uploader("Upload a thresholds.json file", type="json")
-if uploaded is not None and st.button("Apply uploaded file"):
+if uploaded is not None and st.button("Apply uploaded file", icon=":material/upload:"):
     try:
         raw = json.load(uploaded)
         # full {name: {value, ...}} or flat {name: value}

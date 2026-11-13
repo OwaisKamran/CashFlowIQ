@@ -92,7 +92,8 @@ CashFlowIQ/
 │   ├── consultation.py         #   wizard logic: steps, ask_if skipping, validation, WHY (why_asking)
 │   └── diagnosis.py            #   one-call facade used by UI and tests
 ├── ui/
-│   ├── components.py           #   styling, formatting (Rs 1,250,000), score bar, stepper
+│   ├── styles.py               #   colour palette (named constants) and CSS
+│   ├── components.py           #   header band, pills, formatting (Rs 1,250,000), score bar, stepper
 │   ├── fields.py               #   one question -> input, error, "Why are you asking?"
 │   └── report.py               #   the diagnosis report shared by both modes
 ├── sample_cases.py             # 5 demo businesses

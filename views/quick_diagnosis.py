@@ -7,12 +7,14 @@ from knowledge_base.questions import QUESTIONS, STEPS, questions_in_step
 from sample_cases import SAMPLE_CASES
 from ui import fields
 from engine.explanation import plain_summary
-from ui.components import MUTED, STATUS_COLOR, e, section
+from ui.components import STATUS, e, page_header, section
 from ui.report import render_report
 
 TH = st.session_state.thresholds
 PREFIX = "q_"
 BLANK = "Blank form"
+STEP_ICONS = {1: "storefront", 2: "payments", 3: "group", 4: "inventory_2",
+              5: "account_balance", 6: "warning"}
 
 st.session_state.setdefault("quick_answers", {})
 st.session_state.setdefault("quick_errors", {})
@@ -54,10 +56,8 @@ def _run():
 
 
 # page
-st.markdown("<div class='cf-eyebrow'>Quick diagnosis</div>", unsafe_allow_html=True)
-st.title("Quick diagnosis")
-st.markdown("<p class='cf-muted'>All questions on one page. Pick a sample business to see a "
-            "diagnosis instantly, or type your own figures.</p>", unsafe_allow_html=True)
+page_header("Quick Diagnosis", "All questions on one page. Pick a sample business to see a "
+            "diagnosis instantly, or type your own figures.", "bolt")
 
 st.selectbox("Sample business", [BLANK] + list(SAMPLE_CASES), key="sample_choice",
              on_change=_load_sample)
@@ -77,7 +77,7 @@ if st.session_state.quick_result is not None:
     render_report(st.session_state.quick_result, TH, key="quick")
     st.markdown("<br>", unsafe_allow_html=True)
     row = st.container(horizontal=True, gap="small")
-    if row.button("Start a guided consultation", key="to_consult"):
+    if row.button("Start a guided consultation", key="to_consult", icon=":material/assignment:"):
         st.switch_page("views/consultation.py")
     st.markdown("<p class='cf-muted' style='margin-top:1rem'>Your answers are below. Change any "
                 "of them and press <b>Run diagnosis</b> again.</p>", unsafe_allow_html=True)
@@ -85,7 +85,7 @@ if st.session_state.quick_result is not None:
 
 errors = st.session_state.quick_errors
 for step, (title, intro) in STEPS.items():
-    section(f"{step}. {title}")
+    section(f"{step}. {title}", STEP_ICONS[step])
     shown = resolve(A, TH).shown
     qs = questions_in_step(step)
     if not any(q.key in shown for q in qs):
@@ -106,10 +106,12 @@ st.markdown("<br>", unsafe_allow_html=True)
 if errors or st.session_state.quick_step_errors:
     st.markdown("<div class='cf-field-error'>Some answers are missing - see the messages in red "
                 "above.</div>", unsafe_allow_html=True)
-st.button("Run diagnosis", type="primary", key="run_quick", on_click=_run)
+st.button("Run diagnosis", type="primary", key="run_quick", on_click=_run,
+          icon=":material/play_arrow:")
 if st.session_state.quick_result is not None:          # short status by the button
     _r = st.session_state.quick_result
-    st.markdown(f"<div class='cf-status' style='border-color:{STATUS_COLOR.get(_r.status, MUTED)}'>"
-                f"<b style='color:{STATUS_COLOR.get(_r.status, MUTED)}'>{e(_r.status)}</b> - "
+    _c, _soft = STATUS.get(_r.status, STATUS["Unknown"])
+    st.markdown(f"<div class='cf-status' style='display:block;border-color:{_c};background:{_soft}'>"
+                f"<b style='color:{_c}'>{e(_r.status)}</b> - "
                 f"{e(plain_summary(_r)[0])} The full report is at the top of this page.</div>",
                 unsafe_allow_html=True)

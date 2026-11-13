@@ -8,7 +8,8 @@ from engine.explanation import problem_catalog_rows
 from knowledge_base.problems import PROBLEMS
 from knowledge_base.rule_model import RaiseProblem
 from knowledge_base.rules import RULES, RULE_GROUPS
-from ui.components import e
+from ui.components import e, page_header, pill
+from ui.styles import TEAL, TEAL_SOFT
 
 KIND_LABELS = {
     "DATA CHECK": "Data check (sufficiency / sanity)",
@@ -31,8 +32,8 @@ def then_text(rule) -> str:
     return "  ;  ".join(parts)
 
 
+page_header("Knowledge Base", "Every rule, the problem catalog and rule counts.", "menu_book")
 st.caption("This page is for experts and the knowledge engineer, not for business owners.")
-st.markdown("<div class='cf-eyebrow'>Knowledge base</div>", unsafe_allow_html=True)
 st.title("Rules and knowledge")
 st.markdown("<p class='cf-muted'>All expert knowledge is stored as data in "
             "<code>knowledge_base/rules.py</code>, separate from the inference engine. "
@@ -48,6 +49,9 @@ figures = [
 ]
 st.markdown("<div class='cf-figures'>" + "".join(
     f"<div><div class='v'>{v}</div><div class='l'>{e(label)}</div></div>" for label, v in figures)
+    + "</div>", unsafe_allow_html=True)
+st.markdown("<div class='cf-groups'>" + "".join(
+    pill(f"{g} · {sum(r.group == g for r in RULES)}", TEAL, TEAL_SOFT) for g in RULE_GROUPS)
     + "</div>", unsafe_allow_html=True)
 
 tab_rules, tab_problems, tab_groups = st.tabs(["Rules", "Problem catalog", "Rules per group"])

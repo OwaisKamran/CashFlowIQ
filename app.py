@@ -14,15 +14,15 @@ enable_enter_navigation()        # Enter moves to the next box
 
 pages = {
     "For business owners": [
-        st.Page("views/consultation.py", title="Consultation", default=True),
-        st.Page("views/quick_diagnosis.py", title="Quick Diagnosis"),
+        st.Page("views/consultation.py", title="Consultation", icon=":material/assignment:", default=True),
+        st.Page("views/quick_diagnosis.py", title="Quick Diagnosis", icon=":material/bolt:"),
     ],
     "For experts": [
-        st.Page("views/knowledge_base.py", title="Knowledge Base"),
-        st.Page("views/admin.py", title="Knowledge Acquisition"),
+        st.Page("views/knowledge_base.py", title="Knowledge Base", icon=":material/menu_book:"),
+        st.Page("views/admin.py", title="Knowledge Acquisition", icon=":material/tune:"),
     ],
     "Info": [
-        st.Page("views/about.py", title="About"),
+        st.Page("views/about.py", title="About", icon=":material/info:"),
     ],
 }
 navigation = st.navigation(pages)

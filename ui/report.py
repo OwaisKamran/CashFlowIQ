@@ -10,8 +10,9 @@ from knowledge_base.questions import BUSINESS_TYPE_LABELS, SEASON_LABELS
 from knowledge_base.rule_model import NOT_SURE
 from knowledge_base.rules import RULES
 from ui.components import (
-    MUTED, SEVERITY_COLOR, STATE_COLOR, STATUS_COLOR, days, dot, e, ratio, rs, score_bar, section,
+    PRIORITY, SEVERITY, STATE, STATUS, days, e, pill, ratio, rs, score_bar, section,
 )
+from ui.styles import NAVY, NAVY_SOFT
 
 TOP_ACTIONS = 3
 DEBT_RATIOS = {"current_ratio", "quick_ratio", "cash_ratio"}   # divide by short-term debt
@@ -45,7 +46,7 @@ FIGURES = [
 
 
 def _figures_table(result, th) -> str:
-    rows = []
+    cards = []
     debt_free = result.wm.get("cr_band") == "no_debt"           # set by rule R95
     for metric, label, fmt, bench, judge in FIGURES:
         value = result.metrics.get(metric)
@@ -59,14 +60,13 @@ def _figures_table(result, th) -> str:
             shown = fmt(value)
             state = "na" if value is None else judge(value, result.wm, th)
             meaning = figure_meaning(metric, value, th)
-        rows.append(
-            f"<tr><td title='Formula: {e(FORMULAS[metric][1])}'>{e(label)}"
-            f"<div class='cf-muted' style='font-size:.75rem'>{e(bench(th))}</div></td>"
-            f"<td class='num'>{e(shown)}</td>"
-            f"<td>{dot(STATE_COLOR[state])}{e(meaning)}</td></tr>")
-    return ("<table class='cf-table'><thead><tr><th>Figure</th><th class='num'>Value</th>"
-            "<th>What it means for you</th></tr></thead>"
-            f"<tbody>{''.join(rows)}</tbody></table>")
+        colour, word, soft = STATE[state]
+        cards.append(
+            f"<div class='cf-kf' title='Formula: {e(FORMULAS[metric][1])}'>"
+            f"<div class='top'><span class='l'>{e(label)}</span>{pill(word, colour, soft, True)}</div>"
+            f"<div class='v'>{e(shown)}</div><div class='b'>{e(bench(th))}</div>"
+            f"<div class='m'>{e(meaning)}</div></div>")
+    return f"<div class='cf-kfs'>{''.join(cards)}</div>"
 
 
 # plain words for owners; CF and rule IDs only in the technical view
@@ -84,17 +84,18 @@ def likelihood(cf: float) -> str:
 def _actions_html(decisions, start=1, tech=False) -> str:
     items = []
     for d in decisions:
-        colour = SEVERITY_COLOR[d["severity"]]
+        colour, soft = PRIORITY[d["severity"]]
         if tech:
-            meta = (f"<span style='color:{colour};font-weight:600'>{d['severity']}</span> "
-                    f"priority · CF {d['cf']:.2f} · rules {', '.join(d['rule_ids'])}")
+            meta = (pill(f"{d['severity']} priority", colour, soft) +
+                    f"<span class='tech'>CF {d['cf']:.2f} · rules {', '.join(d['rule_ids'])}</span>")
         else:
-            meta = f"<span style='color:{colour};font-weight:600'>{URGENCY[d['severity']]}</span>"
+            meta = pill(URGENCY[d["severity"]], colour, soft)
         items.append(
             f"<li><div class='title'>{e(d['text'])}</div>"
             f"<div class='meta'>{e(d['reason'])}</div>"
             f"<div class='meta'>{meta}</div></li>")
-    return f"<ol class='cf-actions' start='{start}'>{''.join(items)}</ol>"
+    return (f"<ol class='cf-actions' start='{start}' style='counter-reset: act {start - 1}'>"
+            f"{''.join(items)}</ol>")
 
 
 def render_report(result, th, key="report"):
@@ -111,32 +112,32 @@ def render_report(result, th, key="report"):
                      key=f"{key}_tech", value=False)
 
     # 1. status + plain summary
-    colour = STATUS_COLOR.get(result.status, MUTED)
+    colour, soft = STATUS.get(result.status, STATUS["Unknown"])
     paragraphs = "".join(f"<p>{e(s)}</p>" for s in plain_summary(result))
-    left, right = st.columns([3, 2], gap="large", vertical_alignment="center")
-    left.markdown(f"<div class='cf-status' style='border-color:{colour}'>"
-                  f"<div class='cf-eyebrow'>Overall status</div>"
-                  f"<div class='label' style='color:{colour}'>{e(result.status)}</div>"
-                  f"<div class='cf-summary' style='margin-top:.4rem'>{paragraphs}</div></div>",
-                  unsafe_allow_html=True)
+    score = ""
     if result.health_score is not None:
-        right.markdown(score_bar(result.health_score, th, result.status) +
-                       "<div class='cf-muted' style='font-size:.8rem;margin-top:.7rem'>"
-                       "Higher is healthier: 75 or more is healthy, below 35 is a crisis. "
-                       "Each problem found lowers the score.</div>", unsafe_allow_html=True)
+        score = ("<div class='score'>" + score_bar(result.health_score, th, result.status) +
+                 "<div class='cf-muted' style='font-size:.8rem;margin-top:.6rem'>"
+                 "Higher is healthier: 75 or more is healthy, below 35 is a crisis. "
+                 "Each problem found lowers the score.</div></div>")
+    st.markdown(f"<div class='cf-status' style='border-color:{colour};background:{soft}'>"
+                f"<div class='text'><div class='cf-eyebrow'>Overall status</div>"
+                f"<div class='label' style='color:{colour}'>{e(result.status)}</div>"
+                f"<div class='cf-summary' style='margin-top:.4rem'>{paragraphs}</div></div>"
+                f"{score}</div>", unsafe_allow_html=True)
 
     for w in result.warnings:
         st.markdown(f"<div class='cf-note'><b>Please check your answers.</b> {e(w['text'])}</div>",
                     unsafe_allow_html=True)
 
     if not result.sufficient:
-        section("Missing information")
+        section("Missing information", "error")
         st.markdown("".join(f"<div class='cf-item'><div class='main'>{e(m['label'])}"
                             + (f"<div class='meta'>detected by rule {m['rule_id']}</div>" if tech else "")
                             + "</div></div>" for m in result.missing), unsafe_allow_html=True)
     else:
         # 2. what to do
-        section("What you should do")
+        section("What you should do", "checklist")
         if result.decisions:
             st.markdown(_actions_html(result.decisions[:TOP_ACTIONS], tech=tech),
                         unsafe_allow_html=True)
@@ -150,12 +151,12 @@ def render_report(result, th, key="report"):
 
         # 3. what we found
         section(f"What we found ({len(result.problems)} problem"
-                f"{'' if len(result.problems) == 1 else 's'})")
+                f"{'' if len(result.problems) == 1 else 's'})", "troubleshoot")
         if not result.problems:
             st.markdown("<p class='cf-muted'>No problems found.</p>", unsafe_allow_html=True)
         items = []
         for p in result.problems:
-            sev_colour = SEVERITY_COLOR[p["severity"]]
+            sev_colour, sev_soft = SEVERITY[p["severity"]]
             # "Not sure"-only problems are always Possible
             unsure = (f"<div class='meta'>{e(UNSURE_LINE)}</div>" if p.get("unsure") else "")
             if tech:
@@ -168,21 +169,24 @@ def render_report(result, th, key="report"):
             else:
                 meta = unsure
                 word = "Possible" if p.get("unsure") else likelihood(p["cf"])
-                conf = f"<span class='cf-muted'>{word}</span>"
+                conf = pill(word, NAVY, NAVY_SOFT)
                 sev = SERIOUSNESS[p["severity"]]
             items.append(
-                f"<div class='cf-item'><div class='sev' style='color:{sev_colour}'>{sev}</div>"
+                f"<div class='cf-item' style='border-left-color:{sev_colour}'>"
+                f"<div class='sev'>{pill(sev, sev_colour, sev_soft)}</div>"
                 f"<div class='main'><div class='title'>{e(p['title'])}</div>"
                 f"<div class='desc'>{e(p['description'])}</div>{meta}</div>"
                 f"<div class='conf'>{conf}</div></div>")
         st.markdown("".join(items), unsafe_allow_html=True)
         if result.strengths:
-            st.markdown("<div class='cf-muted' style='margin-top:.8rem'><b>Good signs:</b> " +
-                        "; ".join(e(s["text"]) for s in result.strengths) + ".</div>",
-                        unsafe_allow_html=True)
+            good, good_soft = STATUS["Healthy"]
+            st.markdown("<div class='cf-groups' style='margin-top:.8rem;align-items:center'>"
+                        "<b class='cf-muted'>Good signs:</b> " +
+                        " ".join(pill(s["text"], good, good_soft, True) for s in result.strengths)
+                        + "</div>", unsafe_allow_html=True)
 
         # 4. key figures
-        section("Key figures")
+        section("Key figures", "monitoring")
         st.markdown(_figures_table(result, th), unsafe_allow_html=True)
 
     _render_how(result, key)

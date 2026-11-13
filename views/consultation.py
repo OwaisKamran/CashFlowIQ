@@ -7,7 +7,7 @@ from engine.consultation import (
 from engine.diagnosis import diagnose
 from knowledge_base.questions import STEPS, questions_in_step
 from ui import fields
-from ui.components import e, stepper
+from ui.components import e, page_header, stepper
 from ui.report import render_report
 
 TH = st.session_state.thresholds
@@ -90,7 +90,6 @@ def restart():
 
 # screens
 def welcome():
-    st.markdown("<div class='cf-eyebrow'>Consultation</div>", unsafe_allow_html=True)
     st.title("Cash flow check-up for your business")
     st.markdown(
         "<div class='cf-summary' style='max-width:640px'>"
@@ -99,7 +98,8 @@ def welcome():
         "<p>You will get a <b>health status</b>, the <b>main problems</b> and "
         "<b>what to do next</b> - with the reasoning explained.</p></div>",
         unsafe_allow_html=True)
-    st.button("Start", type="primary", key="start_consult", on_click=start)
+    st.button("Start", type="primary", key="start_consult", on_click=start,
+              icon=":material/arrow_forward:")
     st.markdown("<p class='cf-muted' style='margin-top:1.5rem;font-size:.85rem'>All amounts are in "
                 "Pakistani rupees (Rs). Nothing you enter is saved after you close the page.</p>",
                 unsafe_allow_html=True)
@@ -118,7 +118,7 @@ def step_screen(step):
     st.markdown(f"<p class='cf-muted'>{e(intro)}</p>", unsafe_allow_html=True)
 
     main, tip = st.columns([3, 1.3], gap="large")
-    with main:
+    with main, st.container(border=True):
         parse_errors = _read_step(step)        # ask_if reacts to new answers
         if W["errors"] or W["step_error"]:     # re-check after a failed Next
             W["errors"], W["step_error"] = validate_step(step, W["answers"], TH)
@@ -136,9 +136,9 @@ def step_screen(step):
             st.markdown("<div class='cf-field-error'>Please fix the answers marked in red to "
                         "continue.</div>", unsafe_allow_html=True)
         row = st.container(horizontal=True, gap="small")
-        row.button("Back", key="wiz_back", on_click=on_back)
+        row.button("Back", key="wiz_back", on_click=on_back, icon=":material/arrow_back:")
         row.button("Back to review" if W["back_to_review"] else "Next", type="primary",
-                   key="wiz_next", on_click=on_next)
+                   key="wiz_next", on_click=on_next, icon=":material/arrow_forward:")
     with tip:
         st.markdown(
             "<div class='cf-tip'><b>Tips</b><br>Rough figures are fine.<br>"
@@ -159,7 +159,7 @@ def review_screen():
         head = st.container(horizontal=True, vertical_alignment="center")
         head.markdown(f"**{step}. {title}**", width="content")
         head.button("Edit", key=f"edit_step_{step}", type="tertiary", on_click=edit_step,
-                    args=(step,))
+                    args=(step,), icon=":material/edit:")
         if step_is_skipped(step, W["answers"], TH):
             st.markdown(f"<div class='cf-skip'>Skipped: {e(step_skip_reason(step))}</div>",
                         unsafe_allow_html=True)
@@ -171,8 +171,9 @@ def review_screen():
         st.markdown(f"<table class='cf-table' style='margin-bottom:1rem'>{rows}</table>",
                     unsafe_allow_html=True)
     row = st.container(horizontal=True, gap="small")
-    row.button("Back", key="review_back", on_click=on_back)
-    row.button("Get diagnosis", type="primary", key="get_diagnosis", on_click=get_diagnosis)
+    row.button("Back", key="review_back", on_click=on_back, icon=":material/arrow_back:")
+    row.button("Get diagnosis", type="primary", key="get_diagnosis", on_click=get_diagnosis,
+               icon=":material/analytics:")
 
 
 def result_screen():
@@ -182,11 +183,15 @@ def result_screen():
     render_report(result, TH, key="consult")
     st.markdown("<br>", unsafe_allow_html=True)
     row = st.container(horizontal=True, gap="small")
-    row.button("Start new consultation", type="primary", key="new_consult", on_click=restart)
-    row.button("Edit answers", key="edit_answers", on_click=go, args=(REVIEW_STEP,))
+    row.button("Start new consultation", type="primary", key="new_consult", on_click=restart,
+               icon=":material/restart_alt:")
+    row.button("Edit answers", key="edit_answers", on_click=go, args=(REVIEW_STEP,),
+               icon=":material/edit:")
 
 
 # page
+page_header("Consultation", "A guided check-up of your cash, customers, stock and loans.",
+            "assignment")
 step = W["step"]
 st.session_state.consult_step = step                    # used by the UI tests
 if step == 0:
