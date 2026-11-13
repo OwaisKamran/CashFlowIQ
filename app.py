@@ -1,4 +1,6 @@
 """Streamlit entry point: page setup, styling and navigation."""
+from pathlib import Path
+
 import streamlit as st
 
 from knowledge_base.rules import RULES
@@ -8,6 +10,7 @@ from ui.components import (
 
 st.set_page_config(page_title="CashFlow IQ", page_icon=":material/account_balance:",
                    layout="wide")
+st.logo(str(Path(__file__).parent / "ui" / "logo.svg"), size="large")
 init_state()
 inject_css()
 enable_enter_navigation()        # Enter moves to the next box
@@ -28,7 +31,6 @@ pages = {
 navigation = st.navigation(pages)
 
 with st.sidebar:
-    st.markdown("### CashFlow IQ")
     st.caption("Business liquidity & cash flow decision expert system")
     st.caption(f"{len(RULES)} rules · forward chaining · certainty factors")
     if thresholds_modified():

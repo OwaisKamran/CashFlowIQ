@@ -7,7 +7,8 @@ from engine.consultation import (
 from engine.diagnosis import diagnose
 from knowledge_base.questions import STEPS, questions_in_step
 from ui import fields
-from ui.components import e, page_header, stepper
+from knowledge_base.rules import RULES
+from ui.components import chip, e, icon, page_header, stepper
 from ui.report import render_report
 
 TH = st.session_state.thresholds
@@ -90,17 +91,24 @@ def restart():
 
 # screens
 def welcome():
-    st.title("Cash flow check-up for your business")
-    st.markdown(
-        "<div class='cf-summary' style='max-width:640px'>"
-        "<p>Answer a few simple questions about your cash, customers, stock and loans.</p>"
-        "<p>It takes about <b>3 minutes</b>. Rough figures from a normal month are fine.</p>"
-        "<p>You will get a <b>health status</b>, the <b>main problems</b> and "
-        "<b>what to do next</b> - with the reasoning explained.</p></div>",
-        unsafe_allow_html=True)
-    st.button("Start", type="primary", key="start_consult", on_click=start,
-              icon=":material/arrow_forward:")
-    st.markdown("<p class='cf-muted' style='margin-top:1.5rem;font-size:.85rem'>All amounts are in "
+    tiles = [("monitor_heart", "Diagnose", "A health status and score for your cash position."),
+             ("lightbulb", "Explain", "Every conclusion shows the rules and figures behind it."),
+             ("checklist", "Advise", "The main problems and what to do next, in order.")]
+    with st.container(key="cfhero"):
+        st.markdown(
+            f"<div class='cf-hero'>{chip('About 3 minutes', 'schedule')}"
+            "<div class='t'>Cash flow check-up for your business</div>"
+            "<div class='d'>Answer a few simple questions about your cash, customers, stock and loans.</div>"
+            "<div class='n'>It takes about 3 minutes. Rough figures from a normal month are fine.</div>"
+            "<div class='cf-tiles'>" + "".join(
+                f"<div class='cf-tile'><div class='i'>{icon(i)}</div><div class='h'>{h}</div>"
+                f"<div class='p'>{t}</div></div>" for i, h, t in tiles) + "</div>"
+            "<div class='n' style='margin:0 0 .9rem'>You will get a <b>health status</b>, the "
+            "<b>main problems</b> and <b>what to do next</b> - with the reasoning explained.</div></div>",
+            unsafe_allow_html=True)
+        st.button("Start", type="primary", key="start_consult", on_click=start,
+                  icon=":material/arrow_forward:")
+    st.markdown("<p class='cf-muted' style='margin-top:1rem'>All amounts are in "
                 "Pakistani rupees (Rs). Nothing you enter is saved after you close the page.</p>",
                 unsafe_allow_html=True)
 
@@ -114,11 +122,11 @@ def step_screen(step):
     st.markdown(stepper(step, STEPS, skipped_steps()), unsafe_allow_html=True)
     if W["notice"]:
         st.markdown(f"<div class='cf-skip'>{e(W['notice'])}</div>", unsafe_allow_html=True)
-    st.markdown(f"## {title}")
-    st.markdown(f"<p class='cf-muted'>{e(intro)}</p>", unsafe_allow_html=True)
 
     main, tip = st.columns([3, 1.3], gap="large")
-    with main, st.container(border=True):
+    with main, st.container(key="cfcard_step"):
+        st.markdown(f"## {title}")
+        st.markdown(f"<p class='cf-muted'>{e(intro)}</p>", unsafe_allow_html=True)
         parse_errors = _read_step(step)        # ask_if reacts to new answers
         if W["errors"] or W["step_error"]:     # re-check after a failed Next
             W["errors"], W["step_error"] = validate_step(step, W["answers"], TH)
@@ -154,22 +162,23 @@ def review_screen():
     st.markdown("## Review your answers")
     st.markdown("<p class='cf-muted'>Check everything below. Use <b>Edit</b> to change a step, "
                 "then press <b>Get diagnosis</b>.</p>", unsafe_allow_html=True)
-    res = resolve(W["answers"], TH)
-    for step, (title, _intro) in STEPS.items():
-        head = st.container(horizontal=True, vertical_alignment="center")
-        head.markdown(f"**{step}. {title}**", width="content")
-        head.button("Edit", key=f"edit_step_{step}", type="tertiary", on_click=edit_step,
-                    args=(step,), icon=":material/edit:")
-        if step_is_skipped(step, W["answers"], TH):
-            st.markdown(f"<div class='cf-skip'>Skipped: {e(step_skip_reason(step))}</div>",
+    with st.container(key="cfcard_review"):
+        res = resolve(W["answers"], TH)
+        for step, (title, _intro) in STEPS.items():
+            head = st.container(horizontal=True, vertical_alignment="center")
+            head.markdown(f"**{step}. {title}**", width="content")
+            head.button("Edit", key=f"edit_step_{step}", type="tertiary", on_click=edit_step,
+                        args=(step,), icon=":material/edit:")
+            if step_is_skipped(step, W["answers"], TH):
+                st.markdown(f"<div class='cf-skip'>Skipped: {e(step_skip_reason(step))}</div>",
+                            unsafe_allow_html=True)
+                continue
+            rows = "".join(
+                f"<tr><td>{e(q.label)}</td><td class='num'>"
+                f"{e(fields.show_answer(q, res.facts.get(q.key)))}</td></tr>"
+                for q in questions_in_step(step) if q.key in res.shown)
+            st.markdown(f"<div class='cf-review'><table class='cf-table'>{rows}</table></div>",
                         unsafe_allow_html=True)
-            continue
-        rows = "".join(
-            f"<tr><td>{e(q.label)}</td><td class='num'>"
-            f"{e(fields.show_answer(q, res.facts.get(q.key)))}</td></tr>"
-            for q in questions_in_step(step) if q.key in res.shown)
-        st.markdown(f"<table class='cf-table' style='margin-bottom:1rem'>{rows}</table>",
-                    unsafe_allow_html=True)
     row = st.container(horizontal=True, gap="small")
     row.button("Back", key="review_back", on_click=on_back, icon=":material/arrow_back:")
     row.button("Get diagnosis", type="primary", key="get_diagnosis", on_click=get_diagnosis,
@@ -191,7 +200,7 @@ def result_screen():
 
 # page
 page_header("Consultation", "A guided check-up of your cash, customers, stock and loans.",
-            "assignment")
+            f"{len(RULES)} rules · Forward chaining", "account_tree")
 step = W["step"]
 st.session_state.consult_step = step                    # used by the UI tests
 if step == 0:

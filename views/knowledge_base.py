@@ -1,15 +1,13 @@
 """Knowledge Base page: all rules, the problem catalog and rule counts."""
 from collections import Counter
 
-import pandas as pd
 import streamlit as st
 
 from engine.explanation import problem_catalog_rows
 from knowledge_base.problems import PROBLEMS
 from knowledge_base.rule_model import RaiseProblem
 from knowledge_base.rules import RULES, RULE_GROUPS
-from ui.components import e, page_header, pill
-from ui.styles import TEAL, TEAL_SOFT
+from ui.components import SEVERITY, e, icon, page_header, pill
 
 KIND_LABELS = {
     "DATA CHECK": "Data check (sufficiency / sanity)",
@@ -32,57 +30,56 @@ def then_text(rule) -> str:
     return "  ;  ".join(parts)
 
 
-page_header("Knowledge Base", "Every rule, the problem catalog and rule counts.", "menu_book")
+def html_table(header, rows) -> str:
+    """Scrollable table with a sticky navy header row."""
+    head = "".join(f"<th class='{c}'>{e(h)}</th>" for h, c in header)
+    body = "".join("<tr>" + "".join(f"<td class='{c}'>{v}</td>" for v, (_h, c) in zip(r, header))
+                   + "</tr>" for r in rows)
+    return (f"<div class='cf-scroll'><table class='cf-table'><thead><tr>{head}</tr></thead>"
+            f"<tbody>{body}</tbody></table></div>")
+
+
+page_header("Knowledge Base", "Every rule, the problem catalog and rule counts.",
+            f"{len(RULES)} rules · {len(RULE_GROUPS)} groups", "menu_book")
 st.caption("This page is for experts and the knowledge engineer, not for business owners.")
-st.title("Rules and knowledge")
+st.markdown("## Rules and knowledge")
 st.markdown("<p class='cf-muted'>All expert knowledge is stored as data in "
             "<code>knowledge_base/rules.py</code>, separate from the inference engine. "
             "Numeric limits come from <code>thresholds.json</code>.</p>", unsafe_allow_html=True)
 
 kinds = Counter(r.kind for r in RULES)
-figures = [
-    ("Total rules", len(RULES)),
-    ("Compute rules", kinds["COMPUTE"]),
-    ("Decision rules", kinds["DECISION"]),
-    ("Classify & status", kinds["CLASSIFY"] + kinds["STATUS"]),
-    ("Data-check rules", kinds["DATA CHECK"]),
-]
-st.markdown("<div class='cf-figures'>" + "".join(
-    f"<div><div class='v'>{v}</div><div class='l'>{e(label)}</div></div>" for label, v in figures)
-    + "</div>", unsafe_allow_html=True)
-st.markdown("<div class='cf-groups'>" + "".join(
-    pill(f"{g} · {sum(r.group == g for r in RULES)}", TEAL, TEAL_SOFT) for g in RULE_GROUPS)
-    + "</div>", unsafe_allow_html=True)
+counts = {g: sum(r.group == g for r in RULES) for g in RULE_GROUPS}
+stats = [("rule_settings", len(RULES), "Total rules"), ("calculate", kinds["COMPUTE"], "Compute rules"),
+         ("fact_check", kinds["DECISION"], "Decision rules"), ("category", len(RULE_GROUPS), "Rule groups")]
+st.markdown("<div class='cf-stats'>" + "".join(
+    f"<div class='cf-stat'><div class='i'>{icon(i)}</div><div><div class='v'>{v}</div>"
+    f"<div class='l'>{e(label)}</div></div></div>" for i, v, label in stats) + "</div>",
+    unsafe_allow_html=True)
 
-tab_rules, tab_problems, tab_groups = st.tabs(["Rules", "Problem catalog", "Rules per group"])
+tab_rules, tab_problems, tab_groups = st.tabs([":material/list: Rules", ":material/report: Problem catalog",
+                                               ":material/bar_chart: Rules per group"])
 
 with tab_rules:
-    f1, f2, f3 = st.columns(3)
-    groups = f1.multiselect("Group", RULE_GROUPS, placeholder="All groups")
+    groups = st.pills("Group", RULE_GROUPS, selection_mode="multi", key="kb_groups",
+                      format_func=lambda g: f"{g} · {counts[g]}")
+    f2, f3 = st.columns(2)
     types = f2.multiselect("Type", list(KIND_LABELS), placeholder="All types",
                            format_func=lambda k: KIND_LABELS[k])
     search = f3.text_input("Search", placeholder="e.g. runway, supplier, R17")
 
-    df = pd.DataFrame([{"ID": r.id, "Group": r.group, "Type": r.kind, "IF": r.if_text(),
-                        "THEN": then_text(r), "CF": r.cf, "Priority": r.priority,
-                        "Description": r.description} for r in RULES])
-    if groups:
-        df = df[df["Group"].isin(groups)]
-    if types:
-        df = df[df["Type"].isin(types)]
+    rules = [r for r in RULES if (not groups or r.group in groups) and (not types or r.kind in types)]
     if search:
-        mask = df.apply(lambda row: search.lower() in " ".join(map(str, row.values)).lower(), axis=1)
-        df = df[mask]
+        q = search.lower()
+        rules = [r for r in rules if q in " ".join(map(str, (r.id, r.group, r.kind, r.if_text(),
+                                                               then_text(r), r.description))).lower()]
+    st.caption(f"Showing {len(rules)} of {len(RULES)} rules")
+    header = [("Rule", ""), ("Group", ""), ("Type", ""), ("IF", ""), ("THEN", ""), ("CF", "num"),
+              ("Priority", "num")]
+    rows = [(f"<b>{r.id}</b><span class='sub'>{e(r.description)}</span>", e(r.group), e(r.kind),
+             e(r.if_text()), e(then_text(r)), f"{r.cf:.2f}", r.priority) for r in rules]
+    st.markdown(html_table(header, rows), unsafe_allow_html=True)
 
-    st.caption(f"Showing {len(df)} of {len(RULES)} rules")
-    st.dataframe(df, hide_index=True, width="stretch", height=520,
-                 column_config={
-                     "IF": st.column_config.TextColumn(width="large"),
-                     "THEN": st.column_config.TextColumn(width="large"),
-                     "CF": st.column_config.NumberColumn(format="%.2f"),
-                 })
-
-    st.markdown("##### Inspect a rule")
+    st.markdown("#### Inspect a rule")
     by_id = {r.id: r for r in RULES}
     pick = st.selectbox("Rule", list(by_id), format_func=lambda i: f"{i} - {by_id[i].description}",
                         label_visibility="collapsed")
@@ -96,12 +93,14 @@ with tab_rules:
 with tab_problems:
     st.caption(f"{len(PROBLEMS)} problems. Every diagnosis rule refers to this catalog for the "
                "problem's severity, description and recommended decisions.")
-    st.dataframe(pd.DataFrame(problem_catalog_rows()), hide_index=True, width="stretch",
-                 height=520)
+    rows = [(f"<code>{e(r['Key'])}</code>", e(r["Problem"]), pill(r["Severity"], *SEVERITY[r["Severity"]]),
+             e(r["Decisions"])) for r in problem_catalog_rows()]
+    st.markdown(html_table([("Key", ""), ("Problem", ""), ("Severity", ""), ("Decisions", "")], rows),
+                unsafe_allow_html=True)
 
 with tab_groups:
-    counts = pd.DataFrame({"Group": RULE_GROUPS,
-                           "Rules": [sum(r.group == g for r in RULES) for g in RULE_GROUPS]})
-    st.dataframe(counts, hide_index=True, width="stretch",
-                 column_config={"Rules": st.column_config.ProgressColumn(
-                     "Rules", format="%d", min_value=0, max_value=int(counts["Rules"].max()))})
+    top = max(counts.values())
+    bars = "".join(
+        f"<div class='cf-groupbar'><span>{e(g)}</span><div class='t'><div style='width:{n / top * 100:.0f}%'>"
+        f"</div></div><b class='cf-num'>{n}</b></div>" for g, n in counts.items())
+    st.markdown(f"<div class='cf-card'>{bars}</div>", unsafe_allow_html=True)

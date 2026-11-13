@@ -79,8 +79,9 @@ def render(q, prefix, store, error=None, why=True):
         if q.kind == "text":
             st.text_input(q.text, key=key, placeholder=q.example, help=hint, max_chars=80)
         elif q.kind == "amount":
-            st.text_input(q.text, key=key, placeholder=q.example, help=hint,
-                          on_change=_format_amount, args=(key,))
+            with st.container(key=f"cfrs_{key}"):           # CSS adds the "Rs" prefix
+                st.text_input(q.text, key=key, placeholder=q.example, help=hint,
+                              on_change=_format_amount, args=(key,))
         elif q.kind in ("days", "percent"):
             st.number_input(q.text, key=key, min_value=float(q.min), max_value=float(q.max),
                             step=1.0, format="%.0f" if q.kind == "days" else "%.1f",
@@ -94,8 +95,8 @@ def render(q, prefix, store, error=None, why=True):
                 st.selectbox(q.text, q.options, key=key, help=hint,
                              format_func=lambda o: labels.get(o, o))
         elif q.kind == "yesno":
-            st.radio(q.text, list(YES_NO_ANSWERS), index=None, key=key, horizontal=True,
-                     help=hint or None)
+            st.segmented_control(q.text, list(YES_NO_ANSWERS), key=key, selection_mode="single",
+                                 help=hint or None)
         elif q.kind == "checkbox":
             st.checkbox(q.text, key=key, help=hint or None)
         if error:                                     # error under the field

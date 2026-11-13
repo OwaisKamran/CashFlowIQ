@@ -24,7 +24,7 @@ def _widget(at, q, prefix):
     """Find the widget for a question, or None if it is not on screen."""
     key = f"{prefix}{q.key}"
     finder = {"text": at.text_input, "amount": at.text_input, "days": at.number_input,
-              "percent": at.number_input, "yesno": at.radio, "checkbox": at.checkbox,
+              "percent": at.number_input, "yesno": at.button_group, "checkbox": at.checkbox,
               "choice": at.selectbox if len(q.options) > 3 else at.radio}[q.kind]
     try:
         return finder(key=key)
@@ -57,6 +57,11 @@ def _fill(at, questions, source, prefix):
 def _click(at, key):
     at.button(key=key).click().run()
     assert not at.exception
+
+
+def _load(at, name):
+    """Press the Load button on a sample business card (Quick Diagnosis)."""
+    _click(at, f"load_{list(SAMPLE_CASES).index(name)}")
 
 
 def _errors(at):
@@ -222,7 +227,7 @@ def test_warning_signs_need_an_answer_and_accept_not_sure():
         _fill(at, questions_in_step(step), LAHORE, "w_")
         _click(at, "wiz_next")
     assert at.session_state.consult_step == 6
-    radio = at.radio(key="w_overdue_tax")
+    radio = at.button_group(key="w_overdue_tax")
     assert radio.value is None and list(radio.options) == ["Yes", "No", "Not sure"]
     _click(at, "wiz_next")                                           # nothing chosen
     assert at.session_state.consult_step == 6
@@ -240,12 +245,12 @@ def test_warning_signs_need_an_answer_and_accept_not_sure():
 def test_quick_diagnosis_blocks_unanswered_warning_signs():
     at = _app()
     at.switch_page(QUICK).run()
-    at.selectbox(key="sample_choice").select("Hamza Textiles Wholesale (Watch)").run()
-    at.radio(key="q_late_customers").set_value(None).run()
+    _load(at, "Hamza Textiles Wholesale (Watch)")
+    at.button_group(key="q_late_customers").set_value(None).run()
     _click(at, "run_quick")
     assert at.session_state.quick_result is None
     assert any("Please choose an answer" in m for m in _errors(at))
-    at.radio(key="q_late_customers").set_value("Not sure").run()
+    at.button_group(key="q_late_customers").set_value("Not sure").run()
     _click(at, "run_quick")
     assert at.session_state.quick_result.status == "Watch"
 
@@ -306,7 +311,7 @@ def test_why_popover_lists_rules():
 def test_quick_diagnosis_runs_each_sample(name):
     at = _app()
     at.switch_page(QUICK).run()
-    at.selectbox(key="sample_choice").select(name).run()
+    _load(at, name)
     _click(at, "run_quick")
     expected = SAMPLE_CASES[name]["expected_status"]
     assert at.session_state.quick_result.status == expected
@@ -316,7 +321,7 @@ def test_quick_diagnosis_runs_each_sample(name):
 def test_quick_diagnosis_requires_business_name():
     at = _app()
     at.switch_page(QUICK).run()
-    at.selectbox(key="sample_choice").select("Hamza Textiles Wholesale (Watch)").run()
+    _load(at, "Hamza Textiles Wholesale (Watch)")
     at.text_input(key="q_business_name").set_value("").run()
     _click(at, "run_quick")
     assert at.session_state.quick_result is None

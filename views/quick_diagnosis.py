@@ -3,29 +3,28 @@ import streamlit as st
 
 from engine.consultation import resolve, validate_step
 from engine.diagnosis import diagnose
-from knowledge_base.questions import QUESTIONS, STEPS, questions_in_step
+from knowledge_base.questions import BUSINESS_TYPE_LABELS, QUESTIONS, STEPS, questions_in_step
 from sample_cases import SAMPLE_CASES
 from ui import fields
 from engine.explanation import plain_summary
-from ui.components import STATUS, e, page_header, section
+from ui.components import STATUS, e, page_header, pill
 from ui.report import render_report
 
 TH = st.session_state.thresholds
 PREFIX = "q_"
-BLANK = "Blank form"
-STEP_ICONS = {1: "storefront", 2: "payments", 3: "group", 4: "inventory_2",
-              5: "account_balance", 6: "warning"}
 
 st.session_state.setdefault("quick_answers", {})
 st.session_state.setdefault("quick_errors", {})
 st.session_state.setdefault("quick_step_errors", {})
 st.session_state.setdefault("quick_result", None)
+st.session_state.setdefault("quick_sample", None)
 A = st.session_state.quick_answers
 
 
-def _load_sample():
-    choice = st.session_state.sample_choice
-    data = {} if choice == BLANK else SAMPLE_CASES[choice]["inputs"]
+def _load_sample(choice=None):
+    """Fill the form from a sample business (None = clear the form)."""
+    st.session_state.quick_sample = choice
+    data = {} if choice is None else SAMPLE_CASES[choice]["inputs"]
     A.clear()
     A.update(data)
     for q in QUESTIONS:
@@ -57,13 +56,27 @@ def _run():
 
 # page
 page_header("Quick Diagnosis", "All questions on one page. Pick a sample business to see a "
-            "diagnosis instantly, or type your own figures.", "bolt")
+            "diagnosis instantly, or type your own figures.", f"{len(SAMPLE_CASES)} sample businesses",
+            "storefront")
 
-st.selectbox("Sample business", [BLANK] + list(SAMPLE_CASES), key="sample_choice",
-             on_change=_load_sample)
-if st.session_state.get("sample_choice") in SAMPLE_CASES:
-    case = SAMPLE_CASES[st.session_state.sample_choice]
-    st.caption(f"{case['story']} Expected status: {case['expected_status']}.")
+# sample businesses as cards
+cols = st.columns(len(SAMPLE_CASES), gap="small")
+for i, (name, case) in enumerate(SAMPLE_CASES.items()):
+    colour, soft = STATUS[case["expected_status"]]
+    with cols[i], st.container(key=f"cfsample_{i}"):
+        st.markdown(f"<div class='cf-sample'><div class='strip' style='background:{colour}'></div>"
+                    f"<div class='n'>{e(case['inputs']['business_name'])}</div>"
+                    f"<div class='ty'>{e(BUSINESS_TYPE_LABELS[case['inputs']['business_type']])}</div>"
+                    f"{pill(case['expected_status'], colour, soft, True)}</div>", unsafe_allow_html=True)
+        st.button("Load", key=f"load_{i}", on_click=_load_sample, args=(name,),
+                  icon=":material/download:", width="stretch")
+loaded = st.session_state.quick_sample
+note = st.container(horizontal=True, vertical_alignment="center")
+if loaded in SAMPLE_CASES:
+    case = SAMPLE_CASES[loaded]
+    note.caption(f"{case['story']} Expected status: {case['expected_status']}.")
+note.button("Clear form", key="clear_form", type="tertiary", on_click=_load_sample,
+            icon=":material/restart_alt:")
 
 # sync typed values so skipped questions update
 for _q in QUESTIONS:
@@ -84,23 +97,29 @@ if st.session_state.quick_result is not None:
     st.markdown("<h2 style='margin-top:1rem'>Your answers</h2>", unsafe_allow_html=True)
 
 errors = st.session_state.quick_errors
-for step, (title, intro) in STEPS.items():
-    section(f"{step}. {title}", STEP_ICONS[step])
-    shown = resolve(A, TH).shown
-    qs = questions_in_step(step)
-    if not any(q.key in shown for q in qs):
-        fields.skipped_line(qs[0])
-        continue
-    cols = st.columns(2, gap="large")
-    for i, q in enumerate([q for q in qs if q.key in shown]):
-        with cols[i % 2]:
-            fields.render(q, PREFIX, A, error=errors.get(q.key))
-    for q in qs:
-        if q.key not in shown:
-            fields.skipped_line(q)
-    if step in st.session_state.quick_step_errors:
-        st.markdown(f"<div class='cf-field-error'>{e(st.session_state.quick_step_errors[step])}"
-                    "</div>", unsafe_allow_html=True)
+step_errors = st.session_state.quick_step_errors
+shown = resolve(A, TH).shown
+labels = []
+for step, (title, _intro) in STEPS.items():
+    bad = step in step_errors or any(q.key in errors for q in questions_in_step(step))
+    labels.append(f"{':material/error: ' if bad else ''}{step}. {title}")
+for tab, (step, (title, intro)) in zip(st.tabs(labels), STEPS.items()):
+    with tab, st.container(key=f"cfcard_q{step}"):
+        st.markdown(f"<p class='cf-muted'>{e(intro)}</p>", unsafe_allow_html=True)
+        qs = questions_in_step(step)
+        if not any(q.key in shown for q in qs):
+            fields.skipped_line(qs[0])
+            continue
+        cols = st.columns(2, gap="large")
+        for i, q in enumerate([q for q in qs if q.key in shown]):
+            with cols[i % 2]:
+                fields.render(q, PREFIX, A, error=errors.get(q.key))
+        for q in qs:
+            if q.key not in shown:
+                fields.skipped_line(q)
+        if step in step_errors:
+            st.markdown(f"<div class='cf-field-error'>{e(step_errors[step])}</div>",
+                        unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 if errors or st.session_state.quick_step_errors:

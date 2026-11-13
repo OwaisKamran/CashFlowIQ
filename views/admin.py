@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from knowledge_base import validate_thresholds
-from ui.components import page_header
+from ui.components import e, icon, page_header
 
 
 def apply(values: dict):
@@ -14,9 +14,9 @@ def apply(values: dict):
 
 
 page_header("Knowledge Acquisition", "Tune the thresholds the rules use, without changing code.",
-            "tune")
+            f"{len(st.session_state.threshold_table)} thresholds", "tune")
 st.caption("This page is for experts and the knowledge engineer, not for business owners.")
-st.title("Thresholds")
+st.markdown("## Thresholds")
 st.markdown("Knowledge acquisition is how expert knowledge enters the system. Here a domain "
             "expert can tune **every numeric threshold** the rules use, without changing code. "
             "The next diagnosis immediately reasons with the new values.")
@@ -28,22 +28,43 @@ defaults = st.session_state.threshold_defaults
 current = st.session_state.thresholds
 table = st.session_state.threshold_table
 
-df = pd.DataFrame([{
-    "Threshold": name, "Group": meta["group"], "Value": float(current[name]),
-    "Default": float(defaults[name]), "Description": meta["description"],
-} for name, meta in table.items()])
+GROUP_ICONS = {"Ratio analysis": "balance", "Cash runway": "hourglass_bottom", "Receivables": "group",
+               "Inventory": "inventory_2", "Payables": "local_shipping", "Debt": "account_balance",
+               "Business type": "storefront", "Final status": "flag", "Certainty": "percent"}
+groups = list(dict.fromkeys(meta["group"] for meta in table.values()))
 
-edited = st.data_editor(
-    df, hide_index=True, width="stretch", height=520, key="threshold_editor",
-    disabled=["Threshold", "Group", "Default", "Description"],
-    column_config={
-        "Value": st.column_config.NumberColumn(min_value=0.0, step=0.05, format="%.2f",
-                                               help="Edit this column"),
-        "Default": st.column_config.NumberColumn(format="%.2f"),
-        "Description": st.column_config.TextColumn(width="large"),
-    })
 
-new_values = dict(zip(edited["Threshold"], edited["Value"]))
+def editor_key(group: str) -> str:
+    return "threshold_editor_" + group.lower().replace(" ", "_")
+
+
+new_values = {}
+for group in groups:
+    names = [n for n, meta in table.items() if meta["group"] == group]
+    df = pd.DataFrame([{"Threshold": n, "Value": float(current[n]), "Default": float(defaults[n]),
+                        "Description": table[n]["description"]} for n in names])
+    with st.container(key=f"cfcard_thr_{editor_key(group)}"):
+        st.markdown(f"<div class='cf-thr-head'><div class='cf-card-title'>{icon(GROUP_ICONS.get(group, 'tune'))}"
+                    f"{e(group)}</div><span class='cf-muted'>{len(names)} thresholds</span></div>",
+                    unsafe_allow_html=True)
+        edited = st.data_editor(
+            df, hide_index=True, width="stretch", key=editor_key(group),
+            disabled=["Threshold", "Default", "Description"],
+            column_config={
+                "Value": st.column_config.NumberColumn(min_value=0.0, step=0.05, format="%.2f",
+                                                       help="Edit this column"),
+                "Default": st.column_config.NumberColumn(format="%.2f"),
+                "Description": st.column_config.TextColumn(width="large"),
+            })
+        new_values.update(zip(edited["Threshold"], edited["Value"]))
+    st.markdown("<div style='height:.7rem'></div>", unsafe_allow_html=True)
+
+
+def clear_editors():
+    for group in groups:
+        st.session_state.pop(editor_key(group), None)
+
+
 changed = {k: v for k, v in new_values.items() if v != defaults[k]}
 
 c1, c2, c3 = st.columns(3)
@@ -56,7 +77,7 @@ if c1.button("Apply to this session", type="primary", width="stretch", icon=":ma
         st.success(f"Applied. {len(changed)} threshold(s) differ from the defaults.")
 if c2.button("Reset to defaults", width="stretch", icon=":material/restart_alt:"):
     apply(defaults)
-    st.session_state.pop("threshold_editor", None)
+    clear_editors()
     st.rerun()
 
 export = {name: {**meta, "value": current[name]} for name, meta in table.items()}
@@ -68,7 +89,7 @@ if changed:
     st.markdown("**Different from defaults:** " +
                 ", ".join(f"`{k}` {defaults[k]:g} → {v:g}" for k, v in changed.items()))
 
-st.markdown("##### Upload thresholds")
+st.markdown("#### Upload thresholds")
 uploaded = st.file_uploader("Upload a thresholds.json file", type="json")
 if uploaded is not None and st.button("Apply uploaded file", icon=":material/upload:"):
     try:
@@ -82,6 +103,6 @@ if uploaded is not None and st.button("Apply uploaded file", icon=":material/upl
         st.error("Upload rejected:\n\n" + "\n".join(f"- {e}" for e in errors))
     else:
         apply(values)
-        st.session_state.pop("threshold_editor", None)
+        clear_editors()
         st.success("Uploaded thresholds applied to this session.")
         st.rerun()

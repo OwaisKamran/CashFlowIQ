@@ -7,7 +7,7 @@ from knowledge_base import load_threshold_table, load_thresholds
 
 from ui.styles import (  # noqa: F401  (re-exported for the pages)
     BORDER, CSS, INK, MUTED, NAVY, PRIORITY, SEVERITY, SEVERITY_COLOR, STATE, STATE_COLOR,
-    STATUS, STATUS_COLOR, TEAL,
+    STATUS, STATUS_COLOR, TEAL, TRACK,
 )
 
 LINE = BORDER
@@ -55,11 +55,15 @@ def icon(name: str) -> str:
     return f"<span class='cf-ico' aria-hidden='true'>{name}</span>"
 
 
-def page_header(title: str, subtitle: str, icon_name: str):
-    """Navy band at the top of every page."""
-    st.markdown(f"<div class='cf-band'><div class='brand'>CashFlow IQ</div>"
-                f"<div class='title'>{icon(icon_name)}{e(title)}</div>"
-                f"<div class='sub'>{e(subtitle)}</div></div>", unsafe_allow_html=True)
+def chip(text: str, icon_name: str = "") -> str:
+    return f"<span class='cf-chip'>{icon(icon_name) if icon_name else ''}{e(text)}</span>"
+
+
+def page_header(title: str, subtitle: str, chip_text: str = "", chip_icon: str = ""):
+    """Page title and subtitle on the left, a small context chip on the right."""
+    right = chip(chip_text, chip_icon) if chip_text else ""
+    st.markdown(f"<div class='cf-page'><div><div class='t'>{e(title)}</div>"
+                f"<div class='s'>{e(subtitle)}</div></div>{right}</div>", unsafe_allow_html=True)
 
 
 def section(title: str, icon_name: str = ""):
@@ -86,12 +90,17 @@ def score_bar(score: float, th: dict, status: str = "") -> str:
              ("Healthy", 100 - healthy)]
     band_html = "".join(f"<span style='width:{w}%'>{n}</span>" for n, w in bands)
     return (f"<div class='cf-score'>"
-            f"<div class='head'><span class='cf-eyebrow'>Health score</span>"
-            f"<span><span class='num' style='color:{colour}'>{score:.0f}</span> "
-            f"<span class='cf-muted'>out of 100</span></span></div>"
             f"<div class='track'><div class='fill' style='width:{score}%;background:{colour}'></div>"
             f"{ticks}<div class='marker' style='left:{score}%;border-color:{colour}'></div></div>"
             f"<div class='bands'>{band_html}</div></div>")
+
+
+def score_ring(score: float, status: str) -> str:
+    """Donut ring (CSS conic-gradient) coloured by status, with the score inside."""
+    colour = STATUS_COLOR.get(status, NAVY)
+    return (f"<div class='cf-ring' style='background:conic-gradient({colour} {score:.1f}%, "
+            f"{TRACK} 0)'><div class='in'><span class='n' style='color:{colour}'>{score:.0f}</span>"
+            f"<span class='o'>out of 100</span></div></div>")
 
 
 def stepper(current: int, steps: dict, skipped: set, review: bool = False) -> str:

@@ -1,22 +1,27 @@
 [theme]
 base = "light"
 primaryColor = "#0F766E"
-backgroundColor = "#F7F9FC"
+backgroundColor = "#F4F6FA"
 secondaryBackgroundColor = "#EEF2F7"
 textColor = "#1F2937"
 linkColor = "#0F766E"
-font = "sans serif"
-baseRadius = "8px"
-buttonRadius = "8px"
+font = "Inter, sans-serif"
+headingFont = "'Plus Jakarta Sans', sans-serif"
+baseFontSize = 15
+baseRadius = "10px"
+buttonRadius = "10px"
 borderColor = "#E3E8EF"
 showWidgetBorder = true
 dataframeBorderColor = "#E3E8EF"
 dataframeHeaderBackgroundColor = "#EEF2F7"
-showSidebarBorder = true
+showSidebarBorder = false
 
 [theme.sidebar]
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F7F9FC"
+backgroundColor = "#13294B"
+secondaryBackgroundColor = "#1C355C"
+textColor = "#E6ECF5"
+primaryColor = "#14B8A6"
+borderColor = "#2A4673"
 
 [client]
 toolbarMode = "minimal"

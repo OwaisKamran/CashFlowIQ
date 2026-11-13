@@ -10,8 +10,8 @@ from ui.components import page_header, section
 
 kinds = Counter(r.kind for r in RULES)
 
-page_header("About", "How the CashFlow IQ expert system works.", "info")
-st.title("About CashFlow IQ")
+page_header("About", "How the CashFlow IQ expert system works.", "Rule-based expert system", "info")
+st.markdown("## About CashFlow IQ")
 st.markdown(
     "CashFlow IQ is a rule-based **expert system** that diagnoses the liquidity and cash-flow "
     "health of small and medium businesses in Pakistan. It works like a doctor: "
