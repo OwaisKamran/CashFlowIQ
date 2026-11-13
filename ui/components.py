@@ -193,13 +193,13 @@ _ENTER_JS = """
 """
 
 
-# number inputs: allow only digits, commas (money) and one decimal point (percent)
+# number inputs: digits, commas (money) and one decimal point (money, percent)
 _FILTER_JS = """
 (function () {
   if (window.__cfInputFilter) return;
   window.__cfInputFilter = true;
   var RULES = [                                       // container key prefix -> allowed input
-    {sel: '[class*="st-key-cfrs_"] input',   chars: /[0-9,]/, dot: false},   // money
+    {sel: '[class*="st-key-cfrs_"] input',   chars: /[0-9,.]/, dot: true},   // money (rounded on the server)
     {sel: '[class*="st-key-cfdays_"] input', chars: /[0-9]/,  dot: false},   // days
     {sel: '[class*="st-key-cfpct_"] input',  chars: /[0-9.]/, dot: true}     // percentages
   ];

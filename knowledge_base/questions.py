@@ -1,5 +1,6 @@
 """Questions asked by both the Consultation wizard and Quick Diagnosis."""
 from dataclasses import dataclass, field
+from decimal import ROUND_HALF_UP, Decimal
 
 from knowledge_base.rule_model import NOT_SURE, Condition as C
 
@@ -157,18 +158,26 @@ def questions_in_step(step: int) -> list:
     return [q for q in QUESTIONS if q.step == step]
 
 
+def whole_rupees(value) -> float:
+    """Round half up to a whole rupee: 1500.50 -> 1501, 25000.4 -> 25000."""
+    amount = Decimal(str(value))
+    if not amount.is_finite():                             # "nan", "inf"
+        raise ValueError(value)
+    return float(amount.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
 def parse_amount(text):
-    """Parse '1,250,000' -> (value, error); blank -> (None, None)."""
+    """Parse '1,250,000' or '1,500.75' -> (whole rupees, error); blank -> (None, None)."""
     if text is None:
         return None, None
     if isinstance(text, (int, float)) and not isinstance(text, bool):
-        return float(text), None
+        return whole_rupees(text), None
     cleaned = str(text).lower().replace("rs", "").replace(",", "").replace(" ", "").strip()
     if cleaned == "":
         return None, None
     try:
-        value = float(cleaned)
-    except ValueError:
+        value = whole_rupees(cleaned)
+    except (ArithmeticError, ValueError):                  # not a number, e.g. "1.2.3", "abc"
         return None, "Please enter a number, for example 250,000."
     if value < 0:
         return None, "The amount cannot be negative."

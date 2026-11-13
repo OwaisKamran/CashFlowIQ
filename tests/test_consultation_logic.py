@@ -105,6 +105,17 @@ def test_parse_amount_accepts_separators():
     assert parse_amount("abc")[1] and parse_amount("-5")[1]
 
 
+def test_parse_amount_rounds_decimals_to_whole_rupees():
+    assert parse_amount("1500.50") == (1501.0, None)            # half rounds up
+    assert parse_amount("1,500.75") == (1501.0, None)
+    assert parse_amount("25000.4") == (25_000.0, None)
+    assert parse_amount("Rs 2,499.49") == (2499.0, None)
+    assert parse_amount("0.5") == (1.0, None)
+    assert parse_amount(1500.5) == (1501.0, None)               # numbers are rounded the same way
+    assert parse_amount("1.2.3")[0] is None and parse_amount("1.2.3")[1]
+    assert parse_amount("nan")[1] and parse_amount("inf")[1]
+
+
 # WHY and plain language
 def test_why_is_generated_from_rule_base():
     why = why_asking(QUESTION_BY_KEY["collection_days"], RULES)

@@ -247,7 +247,7 @@ The health score shows a coloured number and a marker on the bar, so it is visib
 16. **Can a business be Healthy with a serious problem?** No. R78/R79 require zero Critical and
     zero High problems at any CF for Healthy. R76 caps the status at Risky only for a Critical
     problem that is Likely or stronger (CF ≥ `cap_min_cf` 0.5); a merely Possible one gives Watch.
-17. **How did you test it?** 121 pytest tests: rule-base integrity, engine termination and
+17. **How did you test it?** 122 pytest tests: rule-base integrity, engine termination and
     conflict resolution, CF maths, safety caps, zero-division, data sufficiency, wizard step
     validation (required business name, missing cash fields, liabilities), skipping and
     navigation, the plain summary, every sample case, the CF-dependent cap (CF 0.40 → Watch,

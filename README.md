@@ -13,7 +13,7 @@ A **rule-based expert system** (no machine learning, no AI APIs) that acts like 
 | Inference | Custom **forward-chaining** engine (match → resolve → fire, HALT), MYCIN certainty factors |
 | Explanation | **HOW** (full rule-firing trace) and **WHY** (questions & decisions) |
 | UI | Streamlit (5 pages in 3 sidebar sections) – **For business owners:** Consultation, Quick Diagnosis · **For experts:** Knowledge Base, Knowledge Acquisition · **Info:** About |
-| Tests | 121 pytest tests (engine, rules, data sufficiency, wizard steps, samples, UI) |
+| Tests | 122 pytest tests (engine, rules, data sufficiency, wizard steps, samples, UI) |
 
 **Live app:** `https://<your-app-name>.streamlit.app` *(add after deployment)*
 
