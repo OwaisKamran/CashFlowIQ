@@ -8,7 +8,7 @@ from engine.working_memory import WorkingMemory
 from knowledge_base import load_thresholds
 from knowledge_base.formulas import safe_div
 from knowledge_base.questions import default_inputs, validate_inputs
-from knowledge_base.rule_model import Rule, Condition, Assert, RaiseProblem, known
+from knowledge_base.rule_model import NOT_SURE, Rule, Condition, Assert, RaiseProblem, known
 from knowledge_base.rules import RULES
 from sample_cases import SAMPLE_CASES
 
@@ -110,14 +110,70 @@ def test_healthy_requires_no_high_problem():
     assert "R78" in [s.rule_id for s in result.trace]
 
 
+def _with_critical(cf, inputs=None):
+    """Knowledge-base extension used by the cap tests: an expert adds a rule that raises a
+    Critical problem with the given CF (no built-in Critical rule has a CF below 0.90)."""
+    extra = Rule("X1", "Test", "Expert-added Critical rule", (known("liquid_cash"),),
+                 (RaiseProblem("unsustainable_debt"),), cf, 70)
+    return diagnose(inputs or healthy_inputs(), rules=RULES + [extra])
+
+
+def test_possible_critical_does_not_cap_at_risky_but_blocks_healthy():
+    """Critical problem with CF 0.40 (< cap_min_cf 0.5): not Risky (R76 silent), not Healthy (R78)."""
+    result = _with_critical(0.40)
+    fired = [s.rule_id for s in result.trace]
+    assert result.problem_by_key["unsustainable_debt"]["cf"] == pytest.approx(0.40)
+    assert result.health_score >= load_thresholds()["healthy_score"]
+    assert result.wm.get("critical_problem_count") == 0
+    assert result.wm.get("serious_problem_count") == 1
+    assert result.status == "Watch" and "R76" not in fired and "R78" in fired
+
+
+def test_likely_critical_still_caps_at_risky():
+    """Same rule with CF 0.60 (>= cap_min_cf): the safety cap R76 applies."""
+    result = _with_critical(0.60)
+    assert result.wm.get("critical_problem_count") == 1
+    assert result.status == "Risky" and "R76" in [s.rule_id for s in result.trace]
+
+
+def test_cap_min_cf_is_exactly_the_boundary():
+    assert _with_critical(0.50).status == "Risky"                       # >= 0.5 caps
+    assert _with_critical(0.49).status == "Watch"
+
+
+def test_possible_critical_never_triggers_the_cap_but_still_lowers_the_score():
+    """Hamza scores 60.8 (Watch). A Possible Critical (CF 0.40) does not fire the cap R76,
+    but its score penalty (30 x 0.40 = 12) still applies, and 48.8 is in the Risky band (R75)."""
+    hamza = SAMPLE_CASES["Hamza Textiles Wholesale (Watch)"]["inputs"]
+    result = _with_critical(0.40, hamza)
+    fired = [s.rule_id for s in result.trace]
+    assert result.wm.get("critical_problem_count") == 0
+    assert "R76" not in fired and "R75" in fired
+    assert result.health_score == pytest.approx(diagnose(hamza).health_score - 30 * 0.40)
+
+
+def test_cap_min_cf_comes_from_thresholds():
+    extra = Rule("X1", "Test", "Expert-added Critical rule", (known("liquid_cash"),),
+                 (RaiseProblem("unsustainable_debt"),), 0.40, 70)
+    th = dict(load_thresholds(), cap_min_cf=0.3)
+    assert diagnose(healthy_inputs(), th, rules=RULES + [extra]).status == "Risky"
+
+
+def test_possible_high_from_not_sure_blocks_healthy():
+    """'Not sure' about overdue tax -> Tax arrears (High) at CF 0.45: Possible, but no Healthy."""
+    result = diagnose(dict(healthy_inputs(), overdue_tax=NOT_SURE))
+    assert result.problem_by_key["tax_arrears"]["cf"] == pytest.approx(0.45)
+    assert result.status == "Watch"
+
+
 @pytest.mark.parametrize("name", list(SAMPLE_CASES))
 def test_status_safety_invariants_hold(name):
     result = diagnose(SAMPLE_CASES[name]["inputs"])
-    severities = {p["severity"] for p in result.problems}
-    if "Critical" in severities:
+    cap = load_thresholds()["cap_min_cf"]
+    if any(p["severity"] == "Critical" and p["cf"] >= cap for p in result.problems):
         assert result.status in ("Risky", "Crisis")
     if result.status == "Healthy":
-        assert not severities & {"Critical", "High"}
+        assert not {p["severity"] for p in result.problems} & {"Critical", "High"}
 
 
 def test_imminent_crisis_overrides_score():

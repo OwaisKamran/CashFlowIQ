@@ -129,16 +129,16 @@ def health_score(wm, th):
     return round(max(0.0, min(100.0, 100 - penalty + bonus)), 1)
 
 
-def _count_severity(wm, severity):
-    return sum(1 for key in wm.problems if PROBLEMS[key]["severity"] == severity)
-
-
 def critical_problem_count(wm, th):
-    return _count_severity(wm, "Critical")
+    """Critical problems that are Likely or stronger: combined CF >= cap_min_cf.
+    A merely Possible Critical problem (e.g. from a 'Not sure' answer) does not cap."""
+    return sum(1 for key, rec in wm.problems.items()
+               if PROBLEMS[key]["severity"] == "Critical" and rec.cf >= th["cap_min_cf"])
 
 
-def high_problem_count(wm, th):
-    return _count_severity(wm, "High")
+def serious_problem_count(wm, th):
+    """All Critical and High problems at ANY CF - each one blocks a Healthy status."""
+    return sum(1 for key in wm.problems if PROBLEMS[key]["severity"] in ("Critical", "High"))
 
 
 # Registry: formula name -> (function, human-readable formula for explanations)
@@ -157,6 +157,6 @@ FORMULAS = {
     "cash_conversion_cycle": (cash_conversion_cycle, "stock_days + collection_days - payment_days"),
     "debt_service_ratio": (debt_service_ratio, "monthly_installment / monthly_gross_profit"),
     "health_score": (health_score, "100 - sum(severity weight x CF) + strength bonus"),
-    "critical_problem_count": (critical_problem_count, "number of Critical problems"),
-    "high_problem_count": (high_problem_count, "number of High problems"),
+    "critical_problem_count": (critical_problem_count, "number of Critical problems with CF >= cap_min_cf"),
+    "serious_problem_count": (serious_problem_count, "number of Critical + High problems (any CF)"),
 }

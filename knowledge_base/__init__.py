@@ -51,6 +51,8 @@ def validate_thresholds(values: dict, defaults: dict) -> list:
         for name in ("crisis_score", "watch_score", "healthy_score"):
             if values[name] > 100:
                 errors.append(f"{name} must be between 0 and 100.")
+        if not 0 < values["cap_min_cf"] <= 1:
+            errors.append("cap_min_cf must be between 0 and 1.")
         if not 0 < values["not_sure_cf"] < 1:
             errors.append("not_sure_cf must be between 0 and 1 (a 'Not sure' answer is weaker "
                           "than a 'Yes').")

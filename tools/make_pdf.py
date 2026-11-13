@@ -336,11 +336,20 @@ def build(url: str, out: Path):
                 f"{len(RULES)} cycles."),
               P("3.7 Status safety rules", "h2")]
     story += bullets([
-        "**R76** – any Critical problem caps the status at Risky (never Watch/Healthy).",
-        "**R78** – score ≥ 75 but a High problem exists → Watch.",
-        "**R79** – Healthy requires zero Critical and zero High problems.",
+        "**R71** – counts Critical problems with combined CF ≥ **cap_min_cf** (0.5, Likely or "
+        "stronger); **R72** – counts all Critical and High problems at any CF.",
+        "**R76** – a Likely Critical problem (CF ≥ cap_min_cf) caps the status at Risky (never "
+        "Watch/Healthy). A merely Possible one (CF < 0.5) does not trigger the cap.",
+        "**R78** – score ≥ 75 but a High problem or a Possible Critical problem exists → Watch.",
+        "**R79** – Healthy requires zero Critical and zero High problems, at any CF.",
         "**R73** – an imminent cash crisis forces Crisis regardless of score.",
     ])
+    story += [P("Example: a Healthy-scoring business plus a Critical problem at CF 0.40 → Watch "
+                "(R76 silent, R78 fires); at CF 0.60 → Risky (R76). The health score still "
+                "includes every problem (weight × CF), so a Possible problem can lower the score "
+                "into the Risky band on its own (R75)."),
+              code_block(formulas.critical_problem_count),
+              code_block(formulas.serious_problem_count)]
     story += [P("3.8 Data sufficiency (Group 0)", "h2"),
               P("An expert must not conclude without data. R82–R87 (priority 220) flag missing "
                 "essentials – cash in hand, bank balance, monthly sales > 0, gross margin, fixed "
@@ -450,7 +459,8 @@ def build(url: str, out: Path):
         "problem / formula reference exists, threshold validation.",
         "**test_engine.py** – termination & refraction, conflict resolution order, forward-chaining "
         "propagation, MYCIN maths, CF combination, symptom rules working alone, status safety "
-        "caps (R76, R78), crisis override (R73), division-by-zero inputs, input validation, "
+        "caps (R76, R78) including the CF-dependent cap (0.40 → Watch, 0.60 → Risky, 0.50 "
+        "boundary, cap_min_cf from thresholds), crisis override (R73), division-by-zero inputs, input validation, "
         "collection/debt bands, threshold edits changing conclusions.",
         "**test_sample_cases.py** – each sample reaches its expected status; all four statuses "
         "covered; decisions ranked and explained.",

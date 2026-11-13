@@ -47,5 +47,6 @@
   "strength_bonus":                {"value": 2,    "group": "Final status",     "description": "Health-score bonus for each strength found."},
   "max_strength_bonus":            {"value": 10,   "group": "Final status",     "description": "Maximum total bonus from strengths."},
 
+  "cap_min_cf":                    {"value": 0.5,  "group": "Final status",     "description": "A Critical problem caps the status at Risky only if its combined CF is at least this (Likely or stronger). Weaker (Possible) Critical/High problems still block Healthy."},
   "not_sure_cf":                   {"value": 0.5,  "group": "Certainty",        "description": "CF of a 'Not sure' answer (0-1). Rules testing 'symptom = Yes' also fire on Not sure, with conclusion CF = rule CF x this value."}
 }

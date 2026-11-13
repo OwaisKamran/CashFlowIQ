@@ -135,8 +135,10 @@ section("Status logic")
 st.markdown("""
 After all diagnosis rules have fired, the health score is computed
 (100 − Σ severity weight × CF + strength bonus). Status rules then decide *Healthy*, *Watch*,
-*Risky* or *Crisis*, with safety caps: any Critical problem limits the status to Risky at
-best, and Healthy requires zero Critical and zero High problems.
+*Risky* or *Crisis*, with safety caps: a Critical problem that is Likely or stronger
+(certainty at least `cap_min_cf`, 0.5) limits the status to Risky at best, and Healthy
+requires zero Critical and zero High problems - even merely Possible ones, which limit the
+status to Watch.
 """)
 
 section("Knowledge sources & limitations")

@@ -96,7 +96,23 @@ Why it matters: data checks must run **before** anything else; the health score
   *"You weren't sure about this — worth checking."*; the summary says "You weren't sure
   whether … – worth checking" instead of stating it as fact. The **HOW** trace shows the
   answer as *Not sure (CF 0.50)* and the reduced CF of the rule.
-- Safety caps stay cautious: a Critical problem counts for R76 even when it is only Possible.
+- Safety caps use the evidence strength – see **6c**.
+
+### 6c. Safety caps depend on certainty (`cap_min_cf` = 0.5)
+- **R71** counts only Critical problems with combined CF **≥ `cap_min_cf`** (Likely or
+  stronger, in `thresholds.json`). Only these trigger **R76** (status at most Risky).
+- **R72** counts **every** Critical and High problem, even merely Possible ones
+  (`serious_problem_count`). **R78/R79**: Healthy needs this to be 0 – so a Possible Critical or
+  High problem still limits the status to **Watch**.
+- Why: a weak suspicion (e.g. CF 0.40) should not label a business Risky, but it is still
+  too serious to call the business Healthy.
+- Example (tests): a Healthy-scoring business plus a Critical problem at CF 0.40 → **Watch**
+  (R76 silent, R78 fires); the same at CF 0.60 → **Risky** (R76). Exactly 0.50 caps.
+- Note: the health score still includes every problem (weight × CF), so a Possible problem
+  can lower the score into the Risky band on its own (R75) – the cap is not what moves it.
+- In the current rule base every Critical rule is numeric with CF 0.90–0.95, so a Critical
+  problem is only Possible if an expert adds or weakens a rule; Not-sure answers raise High
+  problems, which block Healthy but never cap.
 
 ## 7. Data sufficiency (Group 0)
 An expert must not conclude without data. Before: an empty form scored "Healthy 100",
@@ -228,12 +244,14 @@ The health score shows a coloured number and a marker on the bar, so it is visib
 15. **Where is knowledge acquisition?** The **Knowledge Acquisition** page (sidebar section
     *For experts*) edits and validates thresholds for the session; JSON download/upload
     preserves them (Streamlit Cloud storage is temporary).
-16. **Can a business be Healthy with a serious problem?** No. R76 caps any Critical problem at
-    Risky; R78/R79 require zero Critical and zero High problems for Healthy.
-17. **How did you test it?** 115 pytest tests: rule-base integrity, engine termination and
+16. **Can a business be Healthy with a serious problem?** No. R78/R79 require zero Critical and
+    zero High problems at any CF for Healthy. R76 caps the status at Risky only for a Critical
+    problem that is Likely or stronger (CF ≥ `cap_min_cf` 0.5); a merely Possible one gives Watch.
+17. **How did you test it?** 121 pytest tests: rule-base integrity, engine termination and
     conflict resolution, CF maths, safety caps, zero-division, data sufficiency, wizard step
     validation (required business name, missing cash fields, liabilities), skipping and
-    navigation, the plain summary, every sample case, "Not sure" answers (half CF, MYCIN
+    navigation, the plain summary, every sample case, the CF-dependent cap (CF 0.40 → Watch,
+    0.60 → Risky, 0.50 boundary), "Not sure" answers (half CF, MYCIN
     combination with a numeric rule, No fires nothing, unanswered blocks Next), and headless
     UI tests (AppTest) for the full wizard, blocked Next, back/edit, the Why link and Quick
     Diagnosis.
