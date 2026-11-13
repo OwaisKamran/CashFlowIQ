@@ -1,0 +1,49 @@
+{
+  "current_ratio_weak":            {"value": 1.0,  "group": "Ratio analysis",   "description": "Current ratio below this = current liabilities exceed current assets (weak)."},
+  "current_ratio_safe":            {"value": 1.5,  "group": "Ratio analysis",   "description": "Current ratio at or above this is considered safe/strong."},
+  "current_ratio_excess":          {"value": 3.0,  "group": "Ratio analysis",   "description": "Current ratio above this (with high cash ratio) suggests idle, unproductive cash."},
+  "quick_ratio_critical":          {"value": 0.5,  "group": "Ratio analysis",   "description": "Quick ratio below this = severe shortage of quick (non-stock) liquid assets."},
+  "quick_ratio_safe":              {"value": 1.0,  "group": "Ratio analysis",   "description": "Quick ratio below this while current ratio is strong = liquidity tied up in stock."},
+  "cash_ratio_low":                {"value": 0.2,  "group": "Ratio analysis",   "description": "Cash ratio below this = very little cash cover for short-term liabilities."},
+  "cash_ratio_idle":               {"value": 1.0,  "group": "Ratio analysis",   "description": "Cash ratio above this (with very high current ratio) = surplus cash sitting idle."},
+
+  "crisis_runway_days":            {"value": 30,   "group": "Cash runway",      "description": "Runway below this many days = cash runs out within a month (critical)."},
+  "short_runway_days":             {"value": 60,   "group": "Cash runway",      "description": "Runway below this many days = short runway."},
+  "safe_runway_days":              {"value": 90,   "group": "Cash runway",      "description": "Runway at or above this many days (about 3 months) is comfortable."},
+
+  "slow_collection_days":          {"value": 60,   "group": "Receivables",      "description": "Average collection period above this = slow collections."},
+  "very_slow_collection_days":     {"value": 90,   "group": "Receivables",      "description": "Average collection period above this = very slow collections."},
+  "good_collection_days":          {"value": 30,   "group": "Receivables",      "description": "Collection period at or below this = disciplined collections."},
+  "max_receivables_to_sales":      {"value": 1.5,  "group": "Receivables",      "description": "Receivables above this many months of sales is too high."},
+  "healthy_receivables_to_sales":  {"value": 1.0,  "group": "Receivables",      "description": "Receivables at or below one month of sales is healthy; above it, concentration risk grows."},
+  "max_credit_gap_days":           {"value": 30,   "group": "Receivables",      "description": "If customers take this many more days than suppliers give you, you are financing customers."},
+
+  "slow_stock_days":               {"value": 90,   "group": "Inventory",        "description": "Stock taking longer than this to sell = slow-moving."},
+  "dead_stock_days":               {"value": 180,  "group": "Inventory",        "description": "Stock taking longer than this to sell = dead / obsolete risk."},
+  "lean_stock_days":               {"value": 45,   "group": "Inventory",        "description": "Stock days at or below this = lean inventory."},
+  "max_inventory_to_sales":        {"value": 2.0,  "group": "Inventory",        "description": "Inventory above this many months of sales = overstocking."},
+  "lean_inventory_to_sales":       {"value": 1.5,  "group": "Inventory",        "description": "Inventory at or below this many months of sales = lean."},
+  "perishable_stock_days":         {"value": 7,    "group": "Inventory",        "description": "Restaurants holding stock longer than this many days risk spoilage."},
+
+  "long_ccc_days":                 {"value": 90,   "group": "Payables",         "description": "Cash conversion cycle above this many days is long."},
+  "manufacturing_long_ccc_days":   {"value": 120,  "group": "Payables",         "description": "For manufacturers, CCC above this many days = long production-to-cash cycle."},
+  "fast_payment_days":             {"value": 15,   "group": "Payables",         "description": "Paying suppliers in fewer days than this = paying too quickly."},
+  "stretched_payment_days":        {"value": 90,   "group": "Payables",         "description": "Taking more than this many days to pay suppliers = dangerously stretched."},
+
+  "dsr_moderate":                  {"value": 0.3,  "group": "Debt",             "description": "Loan installment above this share of gross profit = high debt servicing."},
+  "dsr_heavy":                     {"value": 0.5,  "group": "Debt",             "description": "Loan installment above this share of gross profit = unsustainable."},
+
+  "thin_margin_pct":               {"value": 8,    "group": "Business type",    "description": "Wholesale/trading gross margin below this % is thin."},
+  "cash_business_credit_days":     {"value": 15,   "group": "Business type",    "description": "Retail/restaurant collection days above this = unnecessary credit in a cash business."},
+  "services_billing_days":         {"value": 45,   "group": "Business type",    "description": "Service firms collecting slower than this many days = slow billing."},
+
+  "crisis_score":                  {"value": 35,   "group": "Final status",     "description": "Health score below this = Crisis."},
+  "watch_score":                   {"value": 55,   "group": "Final status",     "description": "Health score below this (and >= crisis score) = Risky."},
+  "healthy_score":                 {"value": 75,   "group": "Final status",     "description": "Health score at or above this can be Healthy (if no Critical/High problems)."},
+  "weight_critical":               {"value": 30,   "group": "Final status",     "description": "Health-score penalty for a Critical problem (multiplied by its CF)."},
+  "weight_high":                   {"value": 15,   "group": "Final status",     "description": "Health-score penalty for a High problem (multiplied by its CF)."},
+  "weight_medium":                 {"value": 8,    "group": "Final status",     "description": "Health-score penalty for a Medium problem (multiplied by its CF)."},
+  "weight_low":                    {"value": 4,    "group": "Final status",     "description": "Health-score penalty for a Low problem (multiplied by its CF)."},
+  "strength_bonus":                {"value": 2,    "group": "Final status",     "description": "Health-score bonus for each strength found."},
+  "max_strength_bonus":            {"value": 10,   "group": "Final status",     "description": "Maximum total bonus from strengths."}
+}

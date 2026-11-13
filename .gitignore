@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Submission archives, screenshots, logs (kept outside the repo in ../extras)
+*.zip
+*.png
+*.jpg
+*.gif
+screenshots/
+*_screenshots/
+extras/
+*.log
+
+# Streamlit secrets (never commit)
+.streamlit/secrets.toml
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
