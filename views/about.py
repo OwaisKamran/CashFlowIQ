@@ -22,6 +22,7 @@ st.markdown("<p class='cf-muted'>No machine learning and no AI services are used
             "explained.</p>", unsafe_allow_html=True)
 
 section("Architecture", "account_tree")
+# architecture diagram (Graphviz)
 st.graphviz_chart("""
 digraph G {
   rankdir=TB; bgcolor="transparent"; nodesep=0.5; ranksep=0.45;

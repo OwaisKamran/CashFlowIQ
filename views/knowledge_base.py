@@ -47,6 +47,7 @@ st.markdown("<p class='cf-muted'>All expert knowledge is stored as data in "
             "<code>knowledge_base/rules.py</code>, separate from the inference engine. "
             "Numeric limits come from <code>thresholds.json</code>.</p>", unsafe_allow_html=True)
 
+# stat tiles
 kinds = Counter(r.kind for r in RULES)
 counts = {g: sum(r.group == g for r in RULES) for g in RULE_GROUPS}
 stats = [("rule_settings", len(RULES), "Total rules"), ("calculate", kinds["COMPUTE"], "Compute rules"),
@@ -59,7 +60,7 @@ st.markdown("<div class='cf-stats'>" + "".join(
 tab_rules, tab_problems, tab_groups = st.tabs([":material/list: Rules", ":material/report: Problem catalog",
                                                ":material/bar_chart: Rules per group"])
 
-with tab_rules:
+with tab_rules:                                       # filters + rules table
     groups = st.pills("Group", RULE_GROUPS, selection_mode="multi", key="kb_groups",
                       format_func=lambda g: f"{g} · {counts[g]}")
     f2, f3 = st.columns(2)

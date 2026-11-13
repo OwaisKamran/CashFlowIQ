@@ -1,5 +1,6 @@
 """Demo businesses with their expected status."""
 
+# warning-sign answers are No unless a case says otherwise
 _NO_SYMPTOMS = {
     "delaying_suppliers": False, "late_customers": False, "stock_piling": False,
     "sales_up_cash_down": False, "personal_money": False, "planning_expansion": False,
@@ -14,6 +15,7 @@ def _case(expected, story, symptoms=None, **inputs):
     return {"expected_status": expected, "story": story, "inputs": data}
 
 
+# one business per status; the tests check each expected status
 SAMPLE_CASES = {
     "Al-Noor General Store (Healthy)": _case(
         "Healthy",

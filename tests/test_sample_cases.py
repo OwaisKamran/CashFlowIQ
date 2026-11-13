@@ -9,7 +9,7 @@ from sample_cases import SAMPLE_CASES
 @pytest.mark.parametrize("name", list(SAMPLE_CASES))
 def test_sample_case_status(name):
     case = SAMPLE_CASES[name]
-    assert validate_inputs(case["inputs"]) == []
+    assert validate_inputs(case["inputs"]) == []          # sample data is valid
     result = diagnose(case["inputs"])
     assert result.status == case["expected_status"], (
         f"{name}: got {result.status} (score {result.health_score})")

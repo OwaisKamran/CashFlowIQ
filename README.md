@@ -15,7 +15,8 @@ A **rule-based expert system** (no machine learning, no AI APIs) that acts like 
 | UI | Streamlit (5 pages in 3 sidebar sections) – **For business owners:** Consultation, Quick Diagnosis · **For experts:** Knowledge Base, Knowledge Acquisition · **Info:** About |
 | Tests | 122 pytest tests (engine, rules, data sufficiency, wizard steps, samples, UI) |
 
-**Live app:** `https://<your-app-name>.streamlit.app` *(add after deployment)*
+**Live app:** https://cashflow-iq.streamlit.app/  
+**Source code:** https://github.com/OwaisKamran/CashFlowIQ
 
 ---
 
@@ -55,7 +56,7 @@ python -m venv .venv
 .venv\Scripts\activate          # Windows
 source .venv/bin/activate       # macOS / Linux
 
-# 2. install dependencies (dev file adds pytest + reportlab)
+# 2. install dependencies (dev file adds pytest + python-docx)
 pip install -r requirements-dev.txt
 
 # 3. run the tests
@@ -99,10 +100,10 @@ CashFlowIQ/
 │   └── report.py               #   the diagnosis report shared by both modes
 ├── sample_cases.py             # 5 demo businesses
 ├── tests/                      # pytest suite
-├── tools/make_pdf.py           # builds CashFlowIQ_Code_Explanation.pdf
+├── tools/make_pdf.py           # builds CashFlowIQ_Code_Explanation.pdf (via Word)
 ├── .streamlit/config.toml      # theme
 ├── requirements.txt            # runtime deps (pinned) – used by Streamlit Cloud
-├── requirements-dev.txt        # + pytest, reportlab (local only)
+├── requirements-dev.txt        # + pytest, python-docx (local only)
 ├── README.md
 └── VIVA_NOTES.md
 ```
@@ -138,7 +139,7 @@ CashFlowIQ/
    (authorise Streamlit to read your repositories).
 2. Click **Create app** → **Deploy a public app from GitHub**.
 3. Fill in:
-   - **Repository:** `<your-username>/cashflow-iq`
+   - **Repository:** `OwaisKamran/CashFlowIQ`
    - **Branch:** `main`
    - **Main file path:** `app.py`
    - **App URL:** choose a name, e.g. `cashflow-iq` → `https://cashflow-iq.streamlit.app`
@@ -162,10 +163,12 @@ CashFlowIQ/
 ## 5. Build the code-explanation PDF
 
 ```bash
-python tools/make_pdf.py --url https://<your-app-name>.streamlit.app
+python tools/make_pdf.py
 ```
-This regenerates `CashFlowIQ_Code_Explanation.pdf` (rule list and sample-case results
-are produced live from the code, so the PDF always matches the program).
+This builds `CashFlowIQ_Code_Explanation.pdf` with the live link. The code excerpts, the
+worked example and the test counts are taken from the code each time, so the PDF always
+matches the program. The document is written with python-docx and converted to PDF by
+Microsoft Word (Windows); without Word, the `.docx` is kept for you to export by hand.
 
 ## 6. Submission checklist
 - [ ] Zip of the project folder (exclude `.venv/`)

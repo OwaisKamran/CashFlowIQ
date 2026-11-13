@@ -193,7 +193,7 @@ _ENTER_JS = """
 """
 
 
-# number inputs: digits, commas (money) and one decimal point (money, percent)
+# number inputs: only digits, commas and one decimal point
 _FILTER_JS = """
 (function () {
   if (window.__cfInputFilter) return;

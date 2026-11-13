@@ -10,10 +10,10 @@ def conclusion_cf(rule_cf: float, premise_cfs) -> float:
 
 def combine(cf1: float, cf2: float) -> float:
     """MYCIN CF combination for two rules with the same conclusion."""
-    if cf1 >= 0 and cf2 >= 0:
+    if cf1 >= 0 and cf2 >= 0:              # both rules support the conclusion
         result = cf1 + cf2 * (1 - cf1)
     elif cf1 < 0 and cf2 < 0:
         result = cf1 + cf2 * (1 + cf1)
-    else:
+    else:                                  # mixed evidence
         result = (cf1 + cf2) / (1 - min(abs(cf1), abs(cf2)))
     return round(result, 4)

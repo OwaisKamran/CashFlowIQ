@@ -1,4 +1,4 @@
 # Local development only (NOT needed on Streamlit Cloud)
 -r requirements.txt
 pytest==9.2.0
-reportlab==5.1.0
+python-docx==1.2.0
