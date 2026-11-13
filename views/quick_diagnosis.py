@@ -1,10 +1,4 @@
-"""
-Quick Diagnosis page - every step of the consultation on ONE page.
-
-Handy for the viva: load a sample business with one click and run it.
-Uses the same questions, the same validation (business name required, plain
-error messages under each field) and the same report as the Consultation.
-"""
+"""Quick Diagnosis page: every question on one page, with sample businesses."""
 import streamlit as st
 
 from engine.consultation import resolve, validate_step
@@ -33,7 +27,7 @@ def _load_sample():
     A.clear()
     A.update(data)
     for q in QUESTIONS:
-        blank = None if q.kind == "yesno" else q.default      # Yes/No/Not sure: no pre-selection
+        blank = None if q.kind == "yesno" else q.default      # no pre-selected answer
         st.session_state[fields.widget_key(PREFIX, q)] = fields.to_widget(q, data.get(q.key, blank))
     st.session_state.quick_result = None
     st.session_state.quick_errors, st.session_state.quick_step_errors = {}, {}
@@ -59,7 +53,7 @@ def _run():
         diagnose(resolve(A, TH).facts, TH)
 
 
-# ----------------------------------------------------------------------
+# page
 st.markdown("<div class='cf-eyebrow'>Quick diagnosis</div>", unsafe_allow_html=True)
 st.title("Quick diagnosis")
 st.markdown("<p class='cf-muted'>All questions on one page. Pick a sample business to see a "
@@ -71,14 +65,14 @@ if st.session_state.get("sample_choice") in SAMPLE_CASES:
     case = SAMPLE_CASES[st.session_state.sample_choice]
     st.caption(f"{case['story']} Expected status: {case['expected_status']}.")
 
-# Sync what was just typed, so skipped questions react immediately
+# sync typed values so skipped questions update
 for _q in QUESTIONS:
     if fields.widget_key(PREFIX, _q) in st.session_state:
         _value, _error = fields.read(_q, PREFIX)
         if _error is None:
             A[_q.key] = _value
 
-# The report goes FIRST, so it is visible straight after pressing "Run diagnosis"
+# report first, so it is visible after Run diagnosis
 if st.session_state.quick_result is not None:
     render_report(st.session_state.quick_result, TH, key="quick")
     st.markdown("<br>", unsafe_allow_html=True)
@@ -113,7 +107,7 @@ if errors or st.session_state.quick_step_errors:
     st.markdown("<div class='cf-field-error'>Some answers are missing - see the messages in red "
                 "above.</div>", unsafe_allow_html=True)
 st.button("Run diagnosis", type="primary", key="run_quick", on_click=_run)
-if st.session_state.quick_result is not None:          # visible right where the user clicked
+if st.session_state.quick_result is not None:          # short status by the button
     _r = st.session_state.quick_result
     st.markdown(f"<div class='cf-status' style='border-color:{STATUS_COLOR.get(_r.status, MUTED)}'>"
                 f"<b style='color:{STATUS_COLOR.get(_r.status, MUTED)}'>{e(_r.status)}</b> - "

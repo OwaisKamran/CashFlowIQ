@@ -1,11 +1,4 @@
-"""
-app.py - Streamlit entry point for CashFlow IQ.
-
-Run locally:   streamlit run app.py
-
-This file only sets up the page, shared session state, styling and navigation.
-Each page lives in views/ ; all reasoning lives in engine/ + knowledge_base/.
-"""
+"""Streamlit entry point: page setup, styling and navigation."""
 import streamlit as st
 
 from knowledge_base.rules import RULES
@@ -17,7 +10,7 @@ st.set_page_config(page_title="CashFlow IQ", page_icon=":material/account_balanc
                    layout="wide")
 init_state()
 inject_css()
-enable_enter_navigation()        # Enter moves to the next box / presses Next
+enable_enter_navigation()        # Enter moves to the next box
 
 pages = {
     "For business owners": [

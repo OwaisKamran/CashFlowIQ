@@ -1,10 +1,4 @@
-"""
-Knowledge Acquisition page - the domain expert tunes the knowledge
-(thresholds) without touching code.
-
-Streamlit Community Cloud's file system is NOT permanent, so edits apply to the
-current browser session only. Use Download / Upload to keep a copy.
-"""
+"""Knowledge Acquisition page: edit, validate, download and upload thresholds."""
 import json
 
 import pandas as pd
@@ -15,7 +9,7 @@ from knowledge_base import validate_thresholds
 
 def apply(values: dict):
     st.session_state.thresholds = {k: float(v) for k, v in values.items()}
-    st.session_state.quick_result = None     # old diagnosis used old knowledge
+    st.session_state.quick_result = None     # clear results made with old thresholds
 
 
 st.caption("This page is for experts and the knowledge engineer, not for business owners.")
@@ -76,7 +70,7 @@ uploaded = st.file_uploader("Upload a thresholds.json file", type="json")
 if uploaded is not None and st.button("Apply uploaded file"):
     try:
         raw = json.load(uploaded)
-        # Accept the full format {name: {value, ...}} or a flat {name: value}
+        # full {name: {value, ...}} or flat {name: value}
         values = {k: (v["value"] if isinstance(v, dict) else v) for k, v in raw.items()}
         errors = validate_thresholds(values, defaults)
     except (json.JSONDecodeError, KeyError, TypeError, AttributeError) as exc:

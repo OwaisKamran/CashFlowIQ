@@ -61,7 +61,7 @@ def test_debt_free_business_gets_a_sensible_result():
     assert result.sufficient and "R87" not in fired and "R95" in fired
     assert result.status == "Healthy" and result.health_score >= 75
     assert "No short-term debt" in [s["text"] for s in result.strengths]
-    # liquidity ratios cannot be computed (nothing to divide by) - and no rule misreads that
+    # liquidity ratios are not computable
     for metric in ("current_ratio", "quick_ratio", "cash_ratio"):
         assert result.metrics[metric] is None
     assert result.metrics["working_capital"] > 0
@@ -117,7 +117,7 @@ def test_sufficient_samples_have_data_sufficient_fact():
 def test_required_questions_match_data_sufficiency_rules():
     flagged = {a.fact for r in RULES for a in r.actions if isinstance(a, FlagMissing)}
     assert flagged == set(ESSENTIAL_FACTS) | {"current_liabilities"}
-    # Always-asked required numbers = exactly the essential facts of the G0 rules.
+    # required numbers = the essential facts of the G0 rules
     always_required = {q.key for q in QUESTIONS
                        if q.required and not q.ask_if and q.kind != "text"}
     assert always_required == set(ESSENTIAL_FACTS)

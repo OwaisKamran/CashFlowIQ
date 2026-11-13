@@ -24,7 +24,7 @@ def _step(result, rule_id):
     return next(s for s in result.trace if s.rule_id == rule_id)
 
 
-# ---------------------------------------------------------------- no default
+# no default
 def test_unanswered_question_blocks_next():
     answers = {k: v for k, v in HEALTHY.items() if k not in YES_NO}
     errors, _ = validate_step(6, answers, TH)
@@ -51,7 +51,7 @@ def test_sample_cases_answer_every_question():
         assert all(case["inputs"][k] in (True, False) for k in YES_NO)
 
 
-# ---------------------------------------------------------------- engine
+# engine
 def test_not_sure_fires_the_yes_rule_at_half_cf():
     result = diagnose(dict(HEALTHY, overdue_tax=NOT_SURE), TH)
     problem = result.problem_by_key["tax_arrears"]
@@ -70,14 +70,13 @@ def test_not_sure_cf_comes_from_thresholds():
 
 
 def test_not_sure_combines_with_a_numeric_rule():
-    # Hamza: collections of 85 days -> R28 (CF 0.60) raises weak credit control;
-    # "Not sure" about late customers -> R59 at 0.50 x 0.5 = 0.25; MYCIN combines them.
+    # R28 (slow collections, 0.60) + R59 on Not sure (0.25) -> MYCIN combination
     result = diagnose(dict(WATCH, late_customers=NOT_SURE), TH)
     problem = result.problem_by_key["weak_credit_control"]
     cf_by_rule = {rule_id: cf for rule_id, cf, _ in problem["evidence"]}
     assert cf_by_rule == pytest.approx({"R28": 0.60, "R59": 0.25})
     assert problem["cf"] == pytest.approx(combine(0.60, 0.25))          # 0.70, order-independent
-    assert problem["unsure"] is False            # backed by real figures, not only "Not sure"
+    assert problem["unsure"] is False            # backed by real figures
 
 
 def test_no_fires_no_symptom_rule():

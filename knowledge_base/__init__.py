@@ -6,17 +6,17 @@ THRESHOLDS_PATH = Path(__file__).with_name("thresholds.json")
 
 
 def load_threshold_table(path=THRESHOLDS_PATH) -> dict:
-    """Full table: name -> {value, group, description} (used by the Admin page)."""
+    """Full table: name -> {value, group, description}."""
     with open(path, encoding="utf-8") as fh:
         return json.load(fh)
 
 
 def load_thresholds(path=THRESHOLDS_PATH) -> dict:
-    """Flat dict: name -> numeric value (what the inference engine uses)."""
+    """Flat dict: name -> value."""
     return {name: entry["value"] for name, entry in load_threshold_table(path).items()}
 
 
-# Threshold pairs that must stay in increasing order: (smaller, larger)
+# pairs that must stay in increasing order
 ORDER_RULES = [
     ("current_ratio_weak", "current_ratio_safe"),
     ("current_ratio_safe", "current_ratio_excess"),
@@ -32,7 +32,7 @@ ORDER_RULES = [
 
 
 def validate_thresholds(values: dict, defaults: dict) -> list:
-    """Check edited/uploaded thresholds before the engine uses them."""
+    """Check edited or uploaded thresholds; returns a list of errors."""
     errors = []
     unknown, missing = set(values) - set(defaults), set(defaults) - set(values)
     if unknown:

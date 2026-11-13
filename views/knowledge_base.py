@@ -1,7 +1,4 @@
-"""
-Knowledge Base page - browse every rule (ID, group, IF, THEN, CF, priority),
-the problem catalog, and rule counts per group.
-"""
+"""Knowledge Base page: all rules, the problem catalog and rule counts."""
 from collections import Counter
 
 import pandas as pd

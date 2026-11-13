@@ -1,22 +1,12 @@
-"""
-rule_model.py - The *shape* of knowledge (data classes only, no reasoning logic).
-
-A rule is pure DATA:   IF <all conditions are true>  THEN <perform actions>
-
-Keeping rules as data (instead of if/else code) is what makes this an expert
-system: the inference engine can read, match, explain and display any rule
-without knowing anything about cash flow.
-"""
+"""Rule data classes: IF all conditions are true THEN perform the actions."""
 from dataclasses import dataclass
 from typing import Any
 
 
-# ---------------------------------------------------------------------------
-# Value references used on the right-hand side of a condition
-# ---------------------------------------------------------------------------
+# values on the right-hand side of a condition
 @dataclass(frozen=True)
 class T:
-    """Reference to a THRESHOLD in thresholds.json (looked up at match time)."""
+    """Reference to a threshold in thresholds.json."""
     name: str
 
     def __str__(self):
@@ -25,30 +15,15 @@ class T:
 
 @dataclass(frozen=True)
 class F:
-    """Reference to another FACT in working memory (fact-to-fact comparison)."""
+    """Reference to another fact in working memory."""
     name: str
 
     def __str__(self):
         return self.name
 
 
-# ---------------------------------------------------------------------------
-# Condition  (the IF part)
-# ---------------------------------------------------------------------------
-# Supported operators:
-#   <  <=  >  >=  ==  !=      compare fact with a constant, T(...) or F(...)
-#   in / not in               fact value is (not) one of a tuple of values
-#   known                     fact exists and is not None
-#   unknown                   fact has NOT been asserted yet (e.g. "no status yet")
-#   missing                   fact was not provided (absent or None)  - data checks
-#   empty                     fact is missing OR equal to 0           - data checks
-#   yes                       Yes/No/Not sure fact is Yes - or Not sure (uncertain evidence)
-#   not_yes                   Yes/No fact is No or not given (Not sure is NOT a No)
-#
-# A "Not sure" answer is stored as the value NOT_SURE with CF = not_sure_cf
-# (thresholds.json). A `yes` condition matches it, and the engine's usual
-# MYCIN rule  conclusion CF = rule CF x min(premise CFs)  scales the conclusion.
-NOT_SURE = "not_sure"
+# operators: < <= > >= == != in, not in, known, unknown, missing, empty, yes, not_yes
+NOT_SURE = "not_sure"      # stored value of a "Not sure" answer (CF = not_sure_cf)
 
 
 @dataclass(frozen=True)
@@ -58,7 +33,7 @@ class Condition:
     value: Any = None
 
     def describe(self) -> str:
-        """Plain-English-ish text used in the Knowledge Base table and trace."""
+        """Readable text for the Knowledge Base table and trace."""
         if self.op == "known":
             return f"{self.fact} is known"
         if self.op == "unknown":
@@ -81,12 +56,10 @@ class Condition:
         return f"{self.fact} {self.op} {self.value}"
 
 
-# ---------------------------------------------------------------------------
-# Actions  (the THEN part)
-# ---------------------------------------------------------------------------
+# actions (the THEN part)
 @dataclass(frozen=True)
 class Compute:
-    """Derive a new fact using a named formula from formulas.py."""
+    """Derive a fact with a named formula."""
     fact: str
     formula: str
 
@@ -96,7 +69,7 @@ class Compute:
 
 @dataclass(frozen=True)
 class Assert:
-    """Assert a categorical fact, e.g. runway_band = 'critical'."""
+    """Assert a fact, e.g. runway_band = 'critical'."""
     fact: str
     value: Any
 
@@ -106,7 +79,7 @@ class Assert:
 
 @dataclass(frozen=True)
 class RaiseProblem:
-    """Diagnose a problem. Details (severity, decisions) come from problems.py."""
+    """Diagnose a problem from the catalog."""
     key: str
 
     def describe(self):
@@ -115,7 +88,7 @@ class RaiseProblem:
 
 @dataclass(frozen=True)
 class AddStrength:
-    """Record a positive finding (adds a small bonus to the health score)."""
+    """Record a positive finding."""
     text: str
 
     def describe(self):
@@ -124,7 +97,7 @@ class AddStrength:
 
 @dataclass(frozen=True)
 class Recommend:
-    """Recommend a decision directly (used by final-status rules)."""
+    """Recommend a decision directly."""
     text: str
     reason: str
     severity: str = "Medium"
@@ -135,7 +108,7 @@ class Recommend:
 
 @dataclass(frozen=True)
 class FlagMissing:
-    """Data sufficiency: record that an essential fact is missing / unusable."""
+    """Record that an essential fact is missing."""
     fact: str
     label: str
 
@@ -145,7 +118,7 @@ class FlagMissing:
 
 @dataclass(frozen=True)
 class Warn:
-    """Sanity check: warn the user that inputs look inconsistent."""
+    """Warn that inputs look inconsistent."""
     text: str
 
     def describe(self):
@@ -154,33 +127,30 @@ class Warn:
 
 @dataclass(frozen=True)
 class Halt:
-    """Stop the inference engine (no further rules fire)."""
+    """Stop the inference engine."""
 
     def describe(self):
         return "HALT inference"
 
 
-# ---------------------------------------------------------------------------
-# Rule
-# ---------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Rule:
     id: str                 # unique ID, e.g. "R17"
-    group: str              # knowledge group, e.g. "Cash Runway"
-    description: str        # plain-English explanation of the rule
-    conditions: tuple       # tuple[Condition]  - ALL must be true (AND)
-    actions: tuple          # tuple[action]     - performed when the rule fires
-    cf: float = 1.0         # certainty factor of the expert (0..1)
-    priority: int = 50      # higher fires first during conflict resolution
+    group: str
+    description: str
+    conditions: tuple       # all must be true (AND)
+    actions: tuple
+    cf: float = 1.0         # certainty factor (0..1)
+    priority: int = 50      # higher fires first
 
     @property
     def specificity(self) -> int:
-        """More conditions = more specific rule (2nd conflict-resolution key)."""
+        """Number of conditions (second conflict-resolution key)."""
         return len(self.conditions)
 
     @property
     def kind(self) -> str:
-        """Category of rule, used for counting on the Knowledge Base page."""
+        """Rule category for the Knowledge Base counts."""
         if any(isinstance(a, (FlagMissing, Warn, Halt)) for a in self.actions) or \
                 any(isinstance(a, Assert) and a.fact == "data_sufficient" for a in self.actions):
             return "DATA CHECK"
@@ -199,18 +169,16 @@ class Rule:
         return "  ;  ".join(a.describe() for a in self.actions)
 
 
-# ---------------------------------------------------------------------------
-# Small helpers that make rules.py read like English
-# ---------------------------------------------------------------------------
+# helpers for rules.py
 def known(fact: str) -> Condition:
     return Condition(fact, "known")
 
 
 def yes(fact: str) -> Condition:
-    """A symptom answered 'Yes' - also matches 'Not sure', at reduced certainty."""
+    """Symptom answered Yes (also matches Not sure, at lower CF)."""
     return Condition(fact, "yes", True)
 
 
 def has_problem(key: str) -> Condition:
-    """True when a problem with this catalog key has been diagnosed."""
+    """True when this problem has been diagnosed."""
     return Condition(f"problem:{key}", "==", True)

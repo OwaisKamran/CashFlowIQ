@@ -1,9 +1,4 @@
-"""
-sample_cases.py - Ready-made demo businesses for the viva (loadable with one click).
-
-Each case lists the inputs and the status the expert system is expected to
-reach with the default thresholds (verified by tests/test_sample_cases.py).
-"""
+"""Demo businesses with their expected status."""
 
 _NO_SYMPTOMS = {
     "delaying_suppliers": False, "late_customers": False, "stock_piling": False,

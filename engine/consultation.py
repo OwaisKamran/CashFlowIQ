@@ -1,17 +1,4 @@
-"""
-consultation.py - Step-by-step consultation (wizard) logic. No UI code here.
-
-* Which questions are shown is decided by each question's ask_if conditions,
-  tested with the SAME evaluate_condition() the inference engine uses.
-* A step whose questions are all skipped is skipped as a whole.
-* validate_step() blocks "Next" until the step's required answers are given.
-* resolve() turns the user's answers into the complete fact set for diagnose():
-  skipped or blank optional questions get their default (0 / No). Shown
-  Yes/No/Not sure questions have NO default - they must be answered.
-
-Everything is recomputed from the answers every time, so going back and
-changing an answer automatically re-decides which later questions are needed.
-"""
+"""Consultation wizard logic: which questions to ask, step navigation, validation, WHY."""
 from dataclasses import dataclass, field
 
 from engine.explanation import rules_using_fact
@@ -27,9 +14,9 @@ REVIEW_STEP = max(STEPS) + 1
 
 @dataclass
 class Resolution:
-    facts: dict = field(default_factory=dict)     # complete facts for the inference engine
-    shown: set = field(default_factory=set)       # keys of questions that are asked
-    skipped: list = field(default_factory=list)   # Question objects not needed
+    facts: dict = field(default_factory=dict)     # facts for the inference engine
+    shown: set = field(default_factory=set)       # keys of questions asked
+    skipped: list = field(default_factory=list)   # questions not needed
 
 
 def should_ask(question, facts: dict, thresholds: dict) -> bool:
@@ -53,9 +40,7 @@ def resolve(answers: dict, thresholds: dict) -> Resolution:
     return res
 
 
-# ----------------------------------------------------------------------
-# Steps
-# ----------------------------------------------------------------------
+# steps
 def step_is_skipped(step: int, answers: dict, thresholds: dict) -> bool:
     shown = resolve(answers, thresholds).shown
     return not any(q.key in shown for q in questions_in_step(step))
@@ -85,10 +70,7 @@ def previous_step(step: int, answers: dict, thresholds: dict) -> int:
 
 
 def validate_step(step: int, answers: dict, thresholds: dict) -> tuple:
-    """
-    Returns (field_errors {key: message}, step_error or None).
-    Required answers must be given; messages are written in plain words.
-    """
+    """Return (field errors by key, step error or None)."""
     res = resolve(answers, thresholds)
     errors = {}
     for q in questions_in_step(step):
@@ -98,7 +80,7 @@ def validate_step(step: int, answers: dict, thresholds: dict) -> tuple:
         if q.kind == "text":
             if not str(value or "").strip():
                 errors[q.key] = f"Please enter your {q.label.lower()}."
-        elif q.kind == "yesno":                   # no default: an unanswered question is not a "No"
+        elif q.kind == "yesno":                   # no default answer
             if value is None:
                 errors[q.key] = NO_ANSWER_ERROR
         elif q.required and value is None:
@@ -125,9 +107,7 @@ def first_invalid_step(answers: dict, thresholds: dict):
     return None
 
 
-# ----------------------------------------------------------------------
-# WHY are you asking?  (generated from the rule base)
-# ----------------------------------------------------------------------
+# "Why are you asking?" - generated from the rule base
 _PLAIN_CONDITION = {
     "accounts_receivable": "you told us customers owe you money",
     "accounts_payable": "you told us you owe suppliers money",
@@ -138,7 +118,7 @@ _PLAIN_CONDITION = {
 
 
 def ask_reason(question) -> str:
-    """Plain reason first, then the rule-style condition (useful in the viva)."""
+    """Plain reason first, then the rule-style condition."""
     if not question.ask_if:
         return "This question is always asked."
     plain = " and ".join(_PLAIN_CONDITION.get(c.fact, c.describe()) for c in question.ask_if)
@@ -147,7 +127,7 @@ def ask_reason(question) -> str:
 
 
 def because(skip_text: str) -> str:
-    """'Skipped because you run a service business.' -> 'you run a service business.'"""
+    """Text after 'because' in a skip reason."""
     return skip_text.split("because ", 1)[1] if "because " in skip_text else skip_text
 
 

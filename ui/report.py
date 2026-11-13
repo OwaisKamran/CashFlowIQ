@@ -1,13 +1,4 @@
-"""
-report.py - The diagnosis report, shared by the Consultation and Quick Diagnosis pages.
-
-Plain English first:
-  1. status + 2-3 sentence summary (generated from facts and fired rules) + score bar
-  2. "What you should do"  - the top 3 actions (the rest in an expander)
-  3. "What we found"       - problems by severity, with confidence
-  4. "Key figures"         - each ratio with a one-line plain meaning
-  5. "How the system reached this" - collapsed: HOW trace, WHY, working memory
-"""
+"""Diagnosis report shared by the Consultation and Quick Diagnosis pages."""
 from datetime import date
 
 import pandas as pd
@@ -78,7 +69,7 @@ def _figures_table(result, th) -> str:
             f"<tbody>{''.join(rows)}</tbody></table>")
 
 
-# Plain words for business owners; exact severity / CF / rule IDs only in technical view
+# plain words for owners; CF and rule IDs only in the technical view
 URGENCY = {"Critical": "Do this now", "High": "Do this soon", "Medium": "Worth doing",
            "Low": "When convenient"}
 SERIOUSNESS = {"Critical": "Critical", "High": "Serious", "Medium": "Moderate", "Low": "Minor"}
@@ -116,11 +107,10 @@ def render_report(result, th, key="report"):
     season = SEASON_LABELS.get(inputs.get("season"), "")
     st.markdown(f"<div class='cf-muted'>{e(btype)} · {e(season)} season · "
                 f"{date.today():%d %b %Y}</div>", unsafe_allow_html=True)
-    # Business owners see plain words; the examiner can switch on rule IDs and CFs.
     tech = st.toggle("Show technical details (rule IDs and certainty factors)",
                      key=f"{key}_tech", value=False)
 
-    # ---------- 1. status + plain summary ----------
+    # 1. status + plain summary
     colour = STATUS_COLOR.get(result.status, MUTED)
     paragraphs = "".join(f"<p>{e(s)}</p>" for s in plain_summary(result))
     left, right = st.columns([3, 2], gap="large", vertical_alignment="center")
@@ -145,7 +135,7 @@ def render_report(result, th, key="report"):
                             + (f"<div class='meta'>detected by rule {m['rule_id']}</div>" if tech else "")
                             + "</div></div>" for m in result.missing), unsafe_allow_html=True)
     else:
-        # ---------- 2. what to do ----------
+        # 2. what to do
         section("What you should do")
         if result.decisions:
             st.markdown(_actions_html(result.decisions[:TOP_ACTIONS], tech=tech),
@@ -158,7 +148,7 @@ def render_report(result, th, key="report"):
         else:
             st.markdown("<p class='cf-muted'>No action needed.</p>", unsafe_allow_html=True)
 
-        # ---------- 3. what we found ----------
+        # 3. what we found
         section(f"What we found ({len(result.problems)} problem"
                 f"{'' if len(result.problems) == 1 else 's'})")
         if not result.problems:
@@ -166,7 +156,7 @@ def render_report(result, th, key="report"):
         items = []
         for p in result.problems:
             sev_colour = SEVERITY_COLOR[p["severity"]]
-            # Raised only from "Not sure" answers -> always "Possible", with a nudge to check
+            # "Not sure"-only problems are always Possible
             unsure = (f"<div class='meta'>{e(UNSURE_LINE)}</div>" if p.get("unsure") else "")
             if tech:
                 rules = " + ".join(ev[0] for ev in p["evidence"])
@@ -191,7 +181,7 @@ def render_report(result, th, key="report"):
                         "; ".join(e(s["text"]) for s in result.strengths) + ".</div>",
                         unsafe_allow_html=True)
 
-        # ---------- 4. key figures ----------
+        # 4. key figures
         section("Key figures")
         st.markdown(_figures_table(result, th), unsafe_allow_html=True)
 

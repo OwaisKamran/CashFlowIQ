@@ -1,35 +1,12 @@
-"""
-rules.py - THE KNOWLEDGE BASE of CashFlow IQ.
-
-Every rule is data:  Rule(id, group, description, conditions, actions, cf, priority)
-
-  * Numbers are NEVER hard-coded: thresholds are referenced with T("name") and
-    read from thresholds.json at match time (so the Admin page can change them).
-  * Problems are referenced by catalog key (see problems.py).
-  * COMPUTE rules derive new facts using named formulas (see formulas.py).
-
-PRIORITY SCHEME (higher fires first - used in conflict resolution)
-  220  DATA CHECK (missing)   -> is every essential fact present?
-  210  DATA CHECK (sanity)    -> do the inputs look consistent?
-  200  DATA VERDICT           -> "Insufficient data" + HALT, or data_sufficient = True
-  100  COMPUTE rules          -> derived facts must exist before they are tested
-   90  BAND rules             -> classify ratios into bands (critical/short/...)
-   70  DIAGNOSIS rules        -> raise problems directly from facts
-   60  SYMPTOM rules          -> raise problems from Yes/No answers
-   40  CHAINED rules          -> use conclusions of other rules (forward chaining)
-    6  STATUS OVERRIDE        -> imminent crisis forces "Crisis"
-    5  SCORING                -> health score & problem counts (after ALL diagnosis)
-    4  STATUS                 -> Healthy / Watch / Risky / Crisis
-    3  STATUS DECISIONS       -> final advice based on the status
-"""
+"""The knowledge base: all rules as data (thresholds come from thresholds.json)."""
 from knowledge_base.rule_model import (
     Rule, Condition as C, T, Compute, Assert, RaiseProblem, AddStrength,
     Recommend, FlagMissing, Warn, Halt, known, yes, has_problem,
 )
 
-P_MISSING, P_SANITY, P_VERDICT = 220, 210, 200
-P_COMPUTE, P_BAND, P_DIAG, P_SYMPTOM, P_CHAIN = 100, 90, 70, 60, 40
-P_OVERRIDE, P_SCORE, P_STATUS, P_STATUS_DECISION = 6, 5, 4, 3
+P_MISSING, P_SANITY, P_VERDICT = 220, 210, 200            # data checks first
+P_COMPUTE, P_BAND, P_DIAG, P_SYMPTOM, P_CHAIN = 100, 90, 70, 60, 40   # then diagnosis
+P_OVERRIDE, P_SCORE, P_STATUS, P_STATUS_DECISION = 6, 5, 4, 3     # status last
 
 G0 = "0. Data Sufficiency"
 G1 = "1. Ratio Analysis"
@@ -44,21 +21,18 @@ G9 = "9. Final Status"
 
 RULE_GROUPS = [G0, G1, G2, G3, G4, G5, G6, G7, G8, G9]
 
-# Essential input facts checked by the data-sufficiency rules (used by the UI
-# to mark required fields; tests check this list matches the G0 rules).
+# essential facts checked by the G0 rules
 ESSENTIAL_FACTS = ["cash_in_hand", "bank_balance", "monthly_sales", "gross_margin_pct",
                    "monthly_fixed_expenses"]
 LIABILITY_FACTS = ["accounts_payable", "short_term_loans", "other_current_liabilities"]
 
-# Facts needed for the balance-sheet ratios (used by several COMPUTE rules)
+# facts needed for the balance-sheet ratios
 _CURRENT_ITEMS = (known("liquid_cash"), known("accounts_receivable"), known("inventory_value"),
                   known("accounts_payable"), known("short_term_loans"),
                   known("other_current_liabilities"))
 
 RULES = [
-    # =====================================================================
-    # GROUP 1 - RATIO ANALYSIS
-    # =====================================================================
+    # Group 1 - ratio analysis
     Rule("R01", G1, "Liquid cash is cash in hand plus bank balance.",
          (known("cash_in_hand"), known("bank_balance")),
          (Compute("liquid_cash", "liquid_cash"),), 1.0, P_COMPUTE),
@@ -97,9 +71,7 @@ RULES = [
          (C("working_capital", "<", 0),),
          (RaiseProblem("negative_working_capital"),), 0.90, P_DIAG),
 
-    # =====================================================================
-    # GROUP 2 - CASH RUNWAY & CASH FLOW
-    # =====================================================================
+    # Group 2 - cash runway & cash flow
     Rule("R14", G2, "Monthly gross profit = sales x gross margin %.",
          (known("monthly_sales"), known("gross_margin_pct")),
          (Compute("monthly_gross_profit", "monthly_gross_profit"),), 1.0, P_COMPUTE),
@@ -128,9 +100,7 @@ RULES = [
          (C("cf_band", "==", "negative"), C("runway_band", "==", "critical")),
          (RaiseProblem("imminent_cash_crisis"),), 0.95, P_CHAIN),
 
-    # =====================================================================
-    # GROUP 3 - RECEIVABLES / CREDIT CONTROL
-    # =====================================================================
+    # Group 3 - receivables / credit control
     Rule("R23", G3, "Receivables-to-sales = months of sales owed by customers.",
          (known("accounts_receivable"), known("monthly_sales")),
          (Compute("receivables_to_sales", "receivables_to_sales"),), 1.0, P_COMPUTE),
@@ -165,9 +135,7 @@ RULES = [
           C("receivables_to_sales", "<=", T("healthy_receivables_to_sales"))),
          (AddStrength("Disciplined collections"),), 1.0, P_DIAG),
 
-    # =====================================================================
-    # GROUP 4 - INVENTORY
-    # =====================================================================
+    # Group 4 - inventory
     Rule("R33", G4, "Inventory-to-sales = months of sales held as stock.",
          (known("inventory_value"), known("monthly_sales")),
          (Compute("inventory_to_sales", "inventory_to_sales"),), 1.0, P_COMPUTE),
@@ -191,9 +159,7 @@ RULES = [
           C("inventory_to_sales", "<=", T("lean_inventory_to_sales"))),
          (AddStrength("Lean inventory"),), 1.0, P_DIAG),
 
-    # =====================================================================
-    # GROUP 5 - PAYABLES / SUPPLIER TERMS
-    # =====================================================================
+    # Group 5 - payables / supplier terms
     Rule("R40", G5, "Cash conversion cycle = stock days + collection days - payment days.",
          (known("stock_days"), known("collection_days"), known("payment_days")),
          (Compute("cash_conversion_cycle", "cash_conversion_cycle"),), 1.0, P_COMPUTE),
@@ -216,9 +182,7 @@ RULES = [
          (C("ccc_band", "==", "long"), C("cf_band", "==", "negative")),
          (RaiseProblem("working_capital_gap"),), 0.85, P_CHAIN),
 
-    # =====================================================================
-    # GROUP 6 - DEBT BURDEN
-    # =====================================================================
+    # Group 6 - debt burden
     Rule("R47", G6, "Debt service ratio = installment / gross profit.",
          (known("monthly_installment"), known("monthly_gross_profit")),
          (Compute("debt_service_ratio", "debt_service_ratio"),), 1.0, P_COMPUTE),
@@ -238,9 +202,7 @@ RULES = [
          (yes("rf_maxed"), C("runway_band", "in", ("critical", "short"))),
          (RaiseProblem("no_borrowing_headroom"),), 0.85, P_CHAIN),
 
-    # =====================================================================
-    # GROUP 7 - SEASONAL & BUSINESS-TYPE SPECIFIC
-    # =====================================================================
+    # Group 7 - seasonal & business-type specific
     Rule("R53", G7, "Off-season with less than 3 months of runway = off-season squeeze.",
          (C("season", "==", "off-season"), C("runway_band", "in", ("critical", "short", "moderate"))),
          (RaiseProblem("off_season_squeeze"),), 0.80, P_CHAIN),
@@ -263,9 +225,7 @@ RULES = [
          (C("business_type", "==", "services"), C("collection_days", ">", T("services_billing_days"))),
          (RaiseProblem("slow_service_billing"),), 0.70, P_DIAG),
 
-    # =====================================================================
-    # GROUP 8 - SYMPTOM-BASED (Yes/No answers)
-    # =====================================================================
+    # Group 8 - symptom-based
     Rule("R59", G8, "Customers often paying late indicates weak credit control (combines with R28).",
          (yes("late_customers"),), (RaiseProblem("weak_credit_control"),), 0.50, P_SYMPTOM),
     Rule("R60", G8, "Delaying supplier payments strains supplier relationships (combines with R45).",
@@ -293,9 +253,7 @@ RULES = [
     Rule("R69", G8, "Overdue taxes create penalty and account-attachment risk.",
          (yes("overdue_tax"),), (RaiseProblem("tax_arrears"),), 0.90, P_SYMPTOM),
 
-    # =====================================================================
-    # GROUP 9 - FINAL STATUS  (fires last because of its low priority)
-    # =====================================================================
+    # Group 9 - final status
     Rule("R70", G9, "After all diagnosis, compute the health score (0-100) - only if data is sufficient.",
          (C("data_sufficient", "==", True),), (Compute("health_score", "health_score"),), 1.0, P_SCORE),
     Rule("R71", G9, "Count the Critical problems that are Likely or stronger (combined CF >= "
@@ -345,12 +303,7 @@ RULES = [
                     "Healthy businesses stay healthy by monitoring before problems appear.",
                     "Low"),), 1.0, P_STATUS_DECISION),
 
-    # =====================================================================
-    # GROUP 0 - DATA SUFFICIENCY  (highest priority: checked before anything else)
-    #   An expert must not conclude without data. Missing essentials -> the
-    #   status becomes "Insufficient data" and the engine HALTS (no score).
-    #   (Numbered R82+ so that the original rule IDs R01-R81 stay unchanged.)
-    # =====================================================================
+    # Group 0 - data sufficiency (highest priority)
     Rule("R82", G0, "Cash in hand is essential for any liquidity diagnosis.",
          (C("cash_in_hand", "missing"),),
          (FlagMissing("cash_in_hand", "Cash in hand"),), 1.0, P_MISSING),
@@ -395,8 +348,7 @@ RULES = [
          (C("missing_facts_count", "unknown"),),
          (Assert("data_sufficient", True),), 1.0, P_VERDICT),
 
-    # A debt-free business: liquidity ratios cannot be computed (nothing to divide by),
-    # but that is GOOD news, not missing data. (Numbered R95 to keep earlier IDs stable.)
+    # debt-free business: no ratios to compute, which is a strength
     Rule("R95", G1, "Owner confirms the business owes nothing: there is no short-term debt, so "
          "liquidity ratios do not apply - a strength, not missing data.",
          (yes("owes_nothing"), C("accounts_payable", "empty"), C("short_term_loans", "empty"),

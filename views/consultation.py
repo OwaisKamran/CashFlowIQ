@@ -1,15 +1,4 @@
-"""
-Consultation page - a step-by-step wizard (the default page).
-
-  Welcome -> 1 Your business -> 2 Cash -> 3 Customers -> 4 Stock -> 5 Suppliers & loans
-          -> 6 Warning signs -> Review -> Diagnosis report
-
-* "Next" is blocked until the step's required answers are filled in; errors are
-  shown under the field in plain words.
-* Questions (and whole steps) are skipped by their ask_if conditions, with a
-  short line explaining why.
-* Each question has a small "Why?" popover generated from the rule base.
-"""
+"""Consultation page: the step-by-step wizard."""
 import streamlit as st
 
 from engine.consultation import (
@@ -35,11 +24,9 @@ st.session_state.setdefault("wiz", _new_state())
 W = st.session_state.wiz
 
 
-# ----------------------------------------------------------------------
-# Callbacks
-# ----------------------------------------------------------------------
+# callbacks
 def _read_step(step):
-    """Copy the current widget values of a step into the answers; return parse errors."""
+    """Copy a step's widget values into the answers; return parse errors."""
     parse_errors = {}
     for q in questions_in_step(step):
         if fields.widget_key(PREFIX, q) in st.session_state:
@@ -80,7 +67,7 @@ def on_next():
 
 def on_back():
     if W["step"] in STEPS:
-        _read_step(W["step"])              # keep what was typed, even if incomplete
+        _read_step(W["step"])              # keep what was typed
     W["back_to_review"] = False
     go(previous_step(W["step"], W["answers"], TH))
 
@@ -101,9 +88,7 @@ def restart():
     W.update(_new_state())
 
 
-# ----------------------------------------------------------------------
-# Screens
-# ----------------------------------------------------------------------
+# screens
 def welcome():
     st.markdown("<div class='cf-eyebrow'>Consultation</div>", unsafe_allow_html=True)
     st.title("Cash flow check-up for your business")
@@ -134,8 +119,8 @@ def step_screen(step):
 
     main, tip = st.columns([3, 1.3], gap="large")
     with main:
-        parse_errors = _read_step(step)        # so ask_if reacts to what was just typed
-        if W["errors"] or W["step_error"]:     # after a failed "Next", re-check live
+        parse_errors = _read_step(step)        # ask_if reacts to new answers
+        if W["errors"] or W["step_error"]:     # re-check after a failed Next
             W["errors"], W["step_error"] = validate_step(step, W["answers"], TH)
             W["errors"].update(parse_errors)
         shown = resolve(W["answers"], TH).shown
@@ -201,7 +186,7 @@ def result_screen():
     row.button("Edit answers", key="edit_answers", on_click=go, args=(REVIEW_STEP,))
 
 
-# ----------------------------------------------------------------------
+# page
 step = W["step"]
 st.session_state.consult_step = step                    # used by the UI tests
 if step == 0:

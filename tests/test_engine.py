@@ -17,7 +17,7 @@ def healthy_inputs():
     return dict(SAMPLE_CASES["Al-Noor General Store (Healthy)"]["inputs"])
 
 
-# ---------------- termination & refraction ----------------
+# termination & refraction
 @pytest.mark.parametrize("name", list(SAMPLE_CASES))
 def test_engine_terminates_and_each_rule_fires_once(name):
     result = diagnose(SAMPLE_CASES[name]["inputs"])
@@ -34,7 +34,7 @@ def test_status_rules_fire_after_all_diagnosis():
     assert all(rid not in diagnosis_ids for rid in order[score_step:])
 
 
-# ---------------- conflict resolution ----------------
+# conflict resolution
 def test_conflict_resolution_priority_then_specificity():
     rules = [
         Rule("X1", "g", "low priority", (known("a"),), (Assert("winner", "X1"),), 1.0, 10),
@@ -60,7 +60,7 @@ def test_forward_chaining_derived_fact_triggers_next_rule():
     assert [s.rule_id for s in engine.trace] == ["A2", "A1"]
 
 
-# ---------------- certainty factors ----------------
+# certainty factors
 def test_mycin_combination():
     assert combine(0.6, 0.5) == pytest.approx(0.8)
     assert combine(0.8, 0.8) == pytest.approx(0.96)
@@ -87,9 +87,9 @@ def test_symptom_rule_works_without_partner_rule():
     assert credit["decisions"]                # decisions come from the catalog
 
 
-# ---------------- status safety rules ----------------
+# status safety rules
 def test_critical_problem_caps_status_at_risky():
-    """Any Critical problem -> never Watch/Healthy, even with a high score (R76)."""
+    """A Likely Critical problem caps the status at Risky (R76)."""
     data = healthy_inputs()
     data["monthly_installment"] = 300_000     # DSR > 0.5 -> 'Unsustainable debt' (Critical)
     data["bank_balance"] = 3_000_000          # keep runway comfortable
@@ -111,15 +111,14 @@ def test_healthy_requires_no_high_problem():
 
 
 def _with_critical(cf, inputs=None):
-    """Knowledge-base extension used by the cap tests: an expert adds a rule that raises a
-    Critical problem with the given CF (no built-in Critical rule has a CF below 0.90)."""
+    """Diagnose with an extra expert rule raising a Critical problem at this CF."""
     extra = Rule("X1", "Test", "Expert-added Critical rule", (known("liquid_cash"),),
                  (RaiseProblem("unsustainable_debt"),), cf, 70)
     return diagnose(inputs or healthy_inputs(), rules=RULES + [extra])
 
 
 def test_possible_critical_does_not_cap_at_risky_but_blocks_healthy():
-    """Critical problem with CF 0.40 (< cap_min_cf 0.5): not Risky (R76 silent), not Healthy (R78)."""
+    """Critical at CF 0.40: no Risky cap (R76), but no Healthy either (R78)."""
     result = _with_critical(0.40)
     fired = [s.rule_id for s in result.trace]
     assert result.problem_by_key["unsustainable_debt"]["cf"] == pytest.approx(0.40)
@@ -130,7 +129,7 @@ def test_possible_critical_does_not_cap_at_risky_but_blocks_healthy():
 
 
 def test_likely_critical_still_caps_at_risky():
-    """Same rule with CF 0.60 (>= cap_min_cf): the safety cap R76 applies."""
+    """Critical at CF 0.60: the cap R76 applies."""
     result = _with_critical(0.60)
     assert result.wm.get("critical_problem_count") == 1
     assert result.status == "Risky" and "R76" in [s.rule_id for s in result.trace]
@@ -142,8 +141,7 @@ def test_cap_min_cf_is_exactly_the_boundary():
 
 
 def test_possible_critical_never_triggers_the_cap_but_still_lowers_the_score():
-    """Hamza scores 60.8 (Watch). A Possible Critical (CF 0.40) does not fire the cap R76,
-    but its score penalty (30 x 0.40 = 12) still applies, and 48.8 is in the Risky band (R75)."""
+    """The cap stays silent, but the score penalty (30 x 0.40) still applies."""
     hamza = SAMPLE_CASES["Hamza Textiles Wholesale (Watch)"]["inputs"]
     result = _with_critical(0.40, hamza)
     fired = [s.rule_id for s in result.trace]
@@ -160,7 +158,7 @@ def test_cap_min_cf_comes_from_thresholds():
 
 
 def test_possible_high_from_not_sure_blocks_healthy():
-    """'Not sure' about overdue tax -> Tax arrears (High) at CF 0.45: Possible, but no Healthy."""
+    """Not sure about overdue tax: High problem at CF 0.45 still blocks Healthy."""
     result = diagnose(dict(healthy_inputs(), overdue_tax=NOT_SURE))
     assert result.problem_by_key["tax_arrears"]["cf"] == pytest.approx(0.45)
     assert result.status == "Watch"
@@ -182,7 +180,7 @@ def test_imminent_crisis_overrides_score():
     assert result.status == "Crisis"
 
 
-# ---------------- division by zero / bad data ----------------
+# division by zero / bad data
 def test_safe_div():
     assert safe_div(10, 0) is None
     assert safe_div(None, 5) is None

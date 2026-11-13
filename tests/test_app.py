@@ -44,7 +44,7 @@ def _set(widget, q, value):
 
 
 def _fill(at, questions, source, prefix):
-    """Fill the questions that are on screen (repeat: answers can reveal new ones)."""
+    """Fill the visible questions (repeated, as answers can reveal more)."""
     for _ in range(3):
         for q in questions:
             w = _widget(at, q, prefix)
@@ -63,9 +63,7 @@ def _errors(at):
     return [m.value for m in at.markdown if "cf-field-error" in m.value]
 
 
-# ---------------------------------------------------------------------------
 # Consultation wizard
-# ---------------------------------------------------------------------------
 def _start(at):
     _click(at, "start_consult")
     assert at.session_state.consult_step == 1
@@ -303,9 +301,7 @@ def test_why_popover_lists_rules():
     assert "R01" in text and "R82" in text                       # rules using cash in hand
 
 
-# ---------------------------------------------------------------------------
 # Quick Diagnosis
-# ---------------------------------------------------------------------------
 @pytest.mark.parametrize("name", list(SAMPLE_CASES))
 def test_quick_diagnosis_runs_each_sample(name):
     at = _app()
@@ -337,7 +333,6 @@ def test_quick_diagnosis_blank_form_lists_missing_fields():
     assert "at least one amount you owe" in text
 
 
-# ---------------------------------------------------------------------------
 @pytest.mark.parametrize("page", ["views/knowledge_base.py", "views/admin.py", "views/about.py"])
 def test_other_pages_render(page):
     at = _app()

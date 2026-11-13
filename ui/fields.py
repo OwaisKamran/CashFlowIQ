@@ -1,14 +1,4 @@
-"""
-fields.py - Renders one Question as a Streamlit input, shared by both pages.
-
-* Amounts are typed as text so they can show thousand separators
-  ("1,250,000"); they are parsed with questions.parse_amount().
-* Each field has a tooltip with a hint, an example value inside the empty box,
-  a plain-words error underneath, and a small "Why?" popover generated from
-  the rule base.
-* Values are mirrored into a plain dict (`store`) because Streamlit forgets
-  widget values when a widget is not on screen (e.g. on another wizard step).
-"""
+"""Render one question as a Streamlit input (shared by both pages)."""
 import streamlit as st
 
 from engine.consultation import why_asking
@@ -29,7 +19,7 @@ def to_widget(q, value):
     """Stored (parsed) value -> what the widget holds."""
     if q.kind == "amount":
         return "" if value is None else f"{value:,.0f}"
-    if q.kind == "yesno":                                  # None = nothing selected yet
+    if q.kind == "yesno":                                  # None = nothing selected
         return next((label for label, v in YES_NO_ANSWERS.items() if v == value and
                      type(v) is type(value)), None)
     if q.kind == "checkbox":
@@ -62,7 +52,7 @@ def ensure_widget(q, prefix, store):
 
 
 def _format_amount(key):
-    """on_change: show the typed amount with thousand separators."""
+    """Show the typed amount with thousand separators."""
     value, error = parse_amount(st.session_state.get(key))
     if value is not None and error is None:
         st.session_state[key] = f"{value:,.0f}"
@@ -81,7 +71,7 @@ def why_text(q) -> str:
 
 
 def render(q, prefix, store, error=None, why=True):
-    """Draw the input for one question and copy its value into `store`."""
+    """Draw the input and copy its value into `store`."""
     ensure_widget(q, prefix, store)
     key = widget_key(prefix, q)
     hint = q.help
@@ -108,9 +98,9 @@ def render(q, prefix, store, error=None, why=True):
                      help=hint or None)
         elif q.kind == "checkbox":
             st.checkbox(q.text, key=key, help=hint or None)
-        if error:                                     # error directly under the field
+        if error:                                     # error under the field
             st.markdown(f"<div class='cf-field-error'>{e(error)}</div>", unsafe_allow_html=True)
-        if why:                                       # small, unobtrusive "Why?" link
+        if why:
             with st.popover("Why are you asking?", width="content"):
                 st.markdown(why_text(q))
 

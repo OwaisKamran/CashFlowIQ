@@ -1,15 +1,4 @@
-"""
-questions.py - What the system asks the user, in plain language.
-
-One ordered list of Question objects drives BOTH user interfaces:
-  * Consultation    - a step-by-step wizard (one STEP per screen)
-  * Quick Diagnosis - every step on a single page
-
-ask_if uses the SAME Condition objects as the rules (evaluated by the same
-function in the inference engine), e.g. "ask payment days only if the business
-owes suppliers money". When a question is skipped, its `default` is used and
-`skip_text` tells the user why, in plain words.
-"""
+"""Questions asked by both the Consultation wizard and Quick Diagnosis."""
 from dataclasses import dataclass, field
 
 from knowledge_base.rule_model import NOT_SURE, Condition as C
@@ -22,11 +11,11 @@ BUSINESS_TYPE_LABELS = {
 SEASONS = ["peak", "normal", "off-season"]
 SEASON_LABELS = {"peak": "Busy season", "normal": "Normal", "off-season": "Slow season"}
 
-MAX_AMOUNT = 50_000_000_000      # Rs 50 billion - sensible upper bound for an SME
+MAX_AMOUNT = 50_000_000_000      # Rs 50 billion
 MAX_DAYS = 365                   # collection / payment days
-MAX_STOCK_DAYS = 730             # stock can sit up to 2 years (dead stock)
+MAX_STOCK_DAYS = 730             # up to 2 years (dead stock)
 
-# Wizard steps: number -> (title, one-line explanation for the user)
+# wizard steps: number -> (title, intro)
 STEPS = {
     1: ("Your business", "Tell us who you are. This only takes a few seconds."),
     2: ("Cash", "Your cash, sales and costs in a normal month. Rough figures are fine."),
@@ -40,21 +29,20 @@ LIABILITY_STEP = 5
 
 @dataclass(frozen=True)
 class Question:
-    key: str                 # fact name in working memory
-    text: str                # plain-language label shown to the user
-    label: str               # short name for the review table / transcript
-    kind: str                # "text" | "choice" | "amount" | "days" | "percent" | "yesno" | "checkbox"
-    #                          yesno = Yes / No / Not sure, no pre-selected answer
+    key: str                 # fact name
+    text: str                # label shown to the user
+    label: str               # short name for the review table
+    kind: str                # text, choice, amount, days, percent, yesno, checkbox
     step: int
-    help: str = ""           # one-line hint (shown as a tooltip)
-    example: str = ""        # example value shown inside the empty field
-    required: bool = False   # must be answered when the question is shown
+    help: str = ""           # tooltip hint
+    example: str = ""        # placeholder
+    required: bool = False
     options: tuple = ()
     min: float = 0
     max: float = MAX_AMOUNT
-    ask_if: tuple = field(default_factory=tuple)   # Conditions - ALL must hold
-    skip_text: str = ""                            # plain reason shown when skipped
-    default: object = 0.0                          # value used when skipped / left blank
+    ask_if: tuple = field(default_factory=tuple)   # conditions, all must hold
+    skip_text: str = ""                            # shown when skipped
+    default: object = 0.0                          # used when skipped or blank
 
 
 _has_ar = C("accounts_receivable", ">", 0)
@@ -68,7 +56,7 @@ _owes_something = C("owes_nothing", "not_yes")
 _OWES_NOTHING = "Not asked because you said you don't owe anything right now."
 
 QUESTIONS = [
-    # ---------------- Step 1: Your business ----------------
+    # Step 1: Your business
     Question("business_name", "Business name", "Business name", "text", 1,
              "Used as the title of your report.", "e.g. Al-Noor General Store", required=True,
              default=""),
@@ -78,7 +66,7 @@ QUESTIONS = [
     Question("season", "Which season is it for your business right now?", "Season", "choice", 1,
              "Many businesses need extra cash to get through the slow season.",
              options=tuple(SEASONS), default="normal"),
-    # ---------------- Step 2: Cash ----------------
+    # Step 2: Cash
     Question("cash_in_hand", "Cash in hand (in the shop or office)", "Cash in hand", "amount", 2,
              "Notes and coins you hold at the business today. Enter 0 if none.",
              "e.g. 150,000", required=True),
@@ -93,7 +81,7 @@ QUESTIONS = [
     Question("monthly_fixed_expenses", "Fixed monthly costs (rent, salaries, bills)",
              "Fixed monthly costs", "amount", 2,
              "Costs you pay every month even if you sell nothing.", "e.g. 300,000", required=True),
-    # ---------------- Step 3: Customers who owe you ----------------
+    # Step 3: Customers who owe you
     Question("accounts_receivable", "Money customers owe you (receivables)", "Money customers owe you",
              "amount", 3, "Unpaid amounts for goods or work already delivered. "
              "Leave blank if you only sell for cash.", "e.g. 400,000 (blank if none)"),
@@ -101,7 +89,7 @@ QUESTIONS = [
              "Days customers take to pay", "days", 3,
              "An average is fine, e.g. most customers pay after about 30 days.", "e.g. 30",
              required=True, max=MAX_DAYS, ask_if=(_has_ar,), skip_text=_NO_CUSTOMER_CREDIT),
-    # ---------------- Step 4: Stock ----------------
+    # Step 4: Stock
     Question("inventory_value", "Value of the stock you hold (at cost)", "Value of stock",
              "amount", 4, "What you paid for the goods on your shelves or in your warehouse. "
              "Leave blank if none.", "e.g. 1,200,000 (blank if none)",
@@ -111,7 +99,7 @@ QUESTIONS = [
              "Days to sell stock", "days", 4,
              "For a restaurant: how many days ingredients are kept before use.", "e.g. 45",
              required=True, max=MAX_STOCK_DAYS, ask_if=(_has_stock,), skip_text=_NO_STOCK),
-    # ---------------- Step 5: Suppliers & loans ----------------
+    # Step 5: Suppliers & loans
     Question("owes_nothing", "I don't owe anything right now", "Owes nothing right now",
              "checkbox", 5, "Tick this if you have no unpaid supplier bills, no loans and no "
              "other bills due. The questions below will then be skipped.", default=False),
@@ -135,7 +123,7 @@ QUESTIONS = [
     Question("other_current_liabilities", "Other bills due within a year (taxes, advances)",
              "Other bills due", "amount", 5, "For example tax payable or advances taken from customers.",
              "e.g. 100,000 (blank if none)", ask_if=(_owes_something,), skip_text=_OWES_NOTHING),
-    # ---------------- Step 6: Warning signs ----------------
+    # Step 6: Warning signs
     Question("late_customers", "Do customers often pay you late?", "Customers often pay late",
              "yesno", 6, ask_if=(_has_ar,), skip_text=_NO_CUSTOMER_CREDIT, default=False),
     Question("big_customer", "Does one customer bring in more than 40% of your sales?",
@@ -161,7 +149,7 @@ QUESTIONS = [
 QUESTION_BY_KEY = {q.key: q for q in QUESTIONS}
 NUMERIC_FIELDS = {q.key: q for q in QUESTIONS if q.kind in ("amount", "days", "percent")}
 SYMPTOMS = {q.key: q.text for q in QUESTIONS if q.kind in ("yesno", "checkbox")}
-YES_NO_ANSWERS = {"Yes": True, "No": False, "Not sure": NOT_SURE}     # label -> stored value
+YES_NO_ANSWERS = {"Yes": True, "No": False, "Not sure": NOT_SURE}
 NO_ANSWER_ERROR = "Please choose an answer (pick 'Not sure' if you don't know)."
 
 
@@ -170,7 +158,7 @@ def questions_in_step(step: int) -> list:
 
 
 def parse_amount(text):
-    """'1,250,000' / 'Rs 1,250,000' -> (1250000.0, None);  '' -> (None, None);  bad -> (None, error)."""
+    """Parse '1,250,000' -> (value, error); blank -> (None, None)."""
     if text is None:
         return None, None
     if isinstance(text, (int, float)) and not isinstance(text, bool):
@@ -190,7 +178,7 @@ def parse_amount(text):
 
 
 def default_inputs() -> dict:
-    """An EMPTY form: numbers and Yes/No/Not sure answers are None (= not answered)."""
+    """An empty form: nothing answered."""
     data = {"business_name": "", "business_type": "retail", "season": "normal"}
     data.update({k: None for k in NUMERIC_FIELDS})
     data.update({k: None if QUESTION_BY_KEY[k].kind == "yesno" else False for k in SYMPTOMS})
@@ -198,8 +186,7 @@ def default_inputs() -> dict:
 
 
 def fill_optional_blanks(data: dict) -> dict:
-    """Blank OPTIONAL numbers mean 'none' (0). Blank REQUIRED numbers stay None,
-    so the data-sufficiency rules can report them as missing."""
+    """Blank optional numbers become 0; blank required ones stay None."""
     out = dict(data)
     for key, q in NUMERIC_FIELDS.items():
         if out.get(key) is None and not q.required:
@@ -208,7 +195,7 @@ def fill_optional_blanks(data: dict) -> dict:
 
 
 def validate_inputs(data: dict) -> list:
-    """Range/type errors (empty values are allowed - the G0 rules handle them)."""
+    """Range and type errors (blanks are left to the data-sufficiency rules)."""
     errors = []
     if data.get("business_type") not in BUSINESS_TYPES:
         errors.append("Business type must be one of: " + ", ".join(BUSINESS_TYPES))

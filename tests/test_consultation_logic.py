@@ -22,7 +22,7 @@ def services_answers():
     return data
 
 
-# ---------------- required business name / step validation ----------------
+# required business name / step validation
 def test_business_name_is_required():
     errors, _ = validate_step(1, {"business_name": "", "business_type": "retail"}, TH)
     assert errors == {"business_name": "Please enter your business name."}
@@ -70,7 +70,7 @@ def test_samples_pass_every_step():
         assert first_invalid_step(case["inputs"], TH) is None
 
 
-# ---------------- skipping and navigation ----------------
+# skipping and navigation
 def test_stock_step_skipped_for_services():
     answers = services_answers()
     assert step_is_skipped(4, answers, TH)
@@ -105,7 +105,7 @@ def test_parse_amount_accepts_separators():
     assert parse_amount("abc")[1] and parse_amount("-5")[1]
 
 
-# ---------------- WHY and plain language ----------------
+# WHY and plain language
 def test_why_is_generated_from_rule_base():
     why = why_asking(QUESTION_BY_KEY["collection_days"], RULES)
     assert {"R25", "R26", "R27"} <= {rid for rid, _g, _d in why["direct"]}

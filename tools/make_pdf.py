@@ -1,11 +1,4 @@
-"""
-make_pdf.py - Build CashFlowIQ_Code_Explanation.pdf (development tool, needs reportlab).
-
-    python tools/make_pdf.py --url https://your-app.streamlit.app
-
-The rule list, problem catalog, thresholds, code excerpts and sample-case results
-are generated LIVE from the project code, so the PDF always matches the program.
-"""
+"""Build CashFlowIQ_Code_Explanation.pdf from the live project code (needs reportlab)."""
 import argparse
 import inspect
 import re
@@ -41,9 +34,7 @@ TEAL = colors.HexColor("#0F766E")
 LIGHT = colors.HexColor("#E6F2F1")
 
 
-# ----------------------------------------------------------------------
-# Fonts: use a Unicode TTF if available (for →, ≥, ×), else Helvetica
-# ----------------------------------------------------------------------
+# fonts: a Unicode TTF if available, else Helvetica
 def _register_fonts():
     candidates = [
         ("Body", ["C:/Windows/Fonts/arial.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
@@ -90,9 +81,7 @@ def md_inline(text: str) -> str:
     return text
 
 
-# ----------------------------------------------------------------------
 # Styles
-# ----------------------------------------------------------------------
 ss = getSampleStyleSheet()
 S = {
     "title": ParagraphStyle("t", parent=ss["Title"], fontName=BOLD, fontSize=24, leading=30,
@@ -167,15 +156,13 @@ def footer(canvas, doc):
     canvas.restoreState()
 
 
-# ----------------------------------------------------------------------
 # Content
-# ----------------------------------------------------------------------
 def build(url: str, out: Path):
     kinds = Counter(r.kind for r in RULES)
     W = A4[0] - 4 * cm
     story = []
 
-    # ---------------- Title page ----------------
+    # Title page
     story += [Spacer(1, 4 * cm), P("CashFlow IQ", "title"),
               P("Business Liquidity & Cash Flow Decision Expert System", "subtitle"),
               Spacer(1, 0.6 * cm),
@@ -198,7 +185,7 @@ def build(url: str, out: Path):
     story.append(table(["Item", "Details"], info, [4.5 * cm, W - 4.5 * cm]))
     story.append(PageBreak())
 
-    # ---------------- 1. Overview ----------------
+    # 1. Overview
     story += [P("1. Project overview", "h1"),
               P("CashFlow IQ is a **rule-based expert system** for small and medium businesses in "
                 "Pakistan (currency PKR). It works like a *doctor for business cash flow*: the owner "
@@ -232,7 +219,7 @@ def build(url: str, out: Path):
         "HOW explanation (rule-firing trace) and WHY explanations.",
     ])
 
-    # ---------------- 2. Architecture ----------------
+    # 2. Architecture
     story += [P("2. Architecture – the six expert-system components", "h1")]
     comp = [
         ["User Interface", "app.py, views/, ui/fields.py, ui/report.py", "Consultation wizard "
@@ -267,7 +254,7 @@ def build(url: str, out: Path):
                 "and each part can be tested independently.")]
     story.append(PageBreak())
 
-    # ---------------- 3. Code walkthrough ----------------
+    # 3. Code walkthrough
     story += [P("3. Code walkthrough", "h1"),
               P("3.1 Rule representation (knowledge_base/rule_model.py)", "h2"),
               P("A rule is a frozen dataclass: `id`, `group`, `description`, `conditions` "
@@ -418,7 +405,7 @@ def build(url: str, out: Path):
     ])
     story.append(PageBreak())
 
-    # ---------------- 4. Rules ----------------
+    # 4. Rules
     story += [P(f"4. Complete knowledge base – {len(RULES)} rules", "h1"),
               P("Generated directly from `knowledge_base/rules.py`. Threshold names refer to "
                 "`thresholds.json` (section 6).")]
@@ -428,20 +415,20 @@ def build(url: str, out: Path):
                        [1.0 * cm, 2.4 * cm, 6.0 * cm, W - 10.5 * cm, 1.1 * cm]))
     story.append(PageBreak())
 
-    # ---------------- 5. Problem catalog ----------------
+    # 5. Problem catalog
     story += [P(f"5. Problem catalog – {len(PROBLEMS)} problems", "h1")]
     rows = [[v["title"], v["severity"], " | ".join(d["text"] for d in v["decisions"])]
             for v in PROBLEMS.values()]
     story.append(table(["Problem", "Severity", "Recommended decisions"], rows,
                        [4.6 * cm, 1.6 * cm, W - 6.2 * cm]))
 
-    # ---------------- 6. Thresholds ----------------
+    # 6. Thresholds
     story += [P("6. Thresholds (thresholds.json)", "h1")]
     rows = [[k, f"{v['value']:g}", v["description"]] for k, v in load_threshold_table().items()]
     story.append(table(["Threshold", "Default", "Meaning"], rows, [4.6 * cm, 1.6 * cm, W - 6.2 * cm]))
     story.append(PageBreak())
 
-    # ---------------- 7. Results ----------------
+    # 7. Results
     story += [P("7. Sample cases and test results", "h1"),
               P("Results below were produced by running the engine on each demo business with "
                 "the default thresholds while generating this document.")]
@@ -479,7 +466,7 @@ def build(url: str, out: Path):
         "with no default (blocked until answered, Not sure shown as Possible) in both modes.",
     ])
 
-    # ---------------- 8. Deployment ----------------
+    # 8. Deployment
     story += [P("8. Running and deployment", "h1"), P("Local", "h2"),
               code_block("python -m venv .venv\n.venv\\Scripts\\activate\n"
                          "pip install -r requirements-dev.txt\npytest -q\nstreamlit run app.py"),
@@ -492,7 +479,7 @@ def build(url: str, out: Path):
         f"Live URL: **{url}**",
     ])
 
-    # ---------------- 9. Viva Q&A ----------------
+    # 9. Viva Q&A
     notes = (ROOT / "VIVA_NOTES.md").read_text(encoding="utf-8")
     notes = notes.split("## 10.", 1)[-1]          # only the viva-questions section
     qa = re.findall(r"^\d+\. \*\*(.+?)\*\* (.+?)(?=^\d+\. \*\*|^\*\*Bonus|\Z)", notes,

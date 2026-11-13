@@ -1,25 +1,10 @@
-"""
-problems.py - The PROBLEM CATALOG (single source of truth for every diagnosis).
-
-Rules only say  RaiseProblem("weak_credit_control").
-Everything else about that problem - its title, severity, description and the
-recommended decisions (with reasons) - lives here, exactly once.
-
-Why a catalog?
-  * Several rules can raise the same problem (e.g. R28 from collection days AND
-    R59 from the "customers pay late" symptom). Each works on its own, and when
-    both fire their certainty factors are COMBINED (MYCIN).
-  * Decisions are written once, so they never go out of sync between rules.
-
-Severity levels (used for ranking and for the health score):
-  Critical > High > Medium > Low
-"""
+"""Problem catalog: title, severity, description and decisions for every problem."""
 
 SEVERITY_RANK = {"Critical": 4, "High": 3, "Medium": 2, "Low": 1}
 
 
 def _p(title, severity, description, decisions):
-    """Build one catalog entry. decisions = list of (decision, reason)."""
+    """One catalog entry; decisions = list of (decision, reason)."""
     assert severity in SEVERITY_RANK, f"bad severity {severity}"
     return {
         "title": title,
@@ -30,7 +15,7 @@ def _p(title, severity, description, decisions):
 
 
 PROBLEMS = {
-    # ---------------- Ratio analysis ----------------
+    # ratio analysis
     "weak_current_ratio": _p(
         "Weak current ratio", "High",
         "Short-term liabilities are larger than short-term assets.",
@@ -75,7 +60,7 @@ PROBLEMS = {
          ("Inject owner equity",
           "Directly closes the working-capital gap.")]),
 
-    # ---------------- Cash runway ----------------
+    # cash runway
     "cash_runs_out_within_month": _p(
         "Cash runs out within a month", "Critical",
         "At the current spending level, cash will be exhausted in less than 30 days.",
@@ -110,7 +95,7 @@ PROBLEMS = {
          ("Negotiate deferral of rent/installments for 1-2 months",
           "Buys time to fix operations without defaulting.")]),
 
-    # ---------------- Receivables ----------------
+    # receivables
     "severe_collection_delay": _p(
         "Severe collection delay", "High",
         "Customers take more than three months on average to pay.",
@@ -143,7 +128,7 @@ PROBLEMS = {
          ("Personally contact the top 5 debtors this week",
           "The largest balances give the biggest cash impact for the effort.")]),
 
-    # ---------------- Inventory ----------------
+    # inventory
     "slow_moving_stock": _p(
         "Slow-moving stock", "Medium",
         "Stock takes three to six months to sell.",
@@ -172,7 +157,7 @@ PROBLEMS = {
         [("Purchase daily/twice-weekly and follow FIFO (first in, first out)",
           "Reduces spoilage and the cash tied up in ingredients.")]),
 
-    # ---------------- Payables ----------------
+    # payables
     "long_ccc": _p(
         "Long cash conversion cycle", "Medium",
         "It takes more than three months for a rupee spent on stock to come back as cash.",
@@ -199,7 +184,7 @@ PROBLEMS = {
         [("Arrange a running finance (working-capital) line with your bank",
           "Bridges the gap between paying suppliers and collecting from customers.")]),
 
-    # ---------------- Debt ----------------
+    # debt
     "high_debt_servicing": _p(
         "High debt-servicing load", "Medium",
         "Loan installments take 30-50% of gross profit.",
@@ -225,7 +210,7 @@ PROBLEMS = {
          ("Reduce dependence on running finance by collecting receivables",
           "Lowers utilisation and restores emergency headroom.")]),
 
-    # ---------------- Seasonal & business type ----------------
+    # seasonal & business type
     "off_season_squeeze": _p(
         "Off-season cash squeeze", "High",
         "It is the off-season and the cash runway is below three months.",
@@ -261,7 +246,7 @@ PROBLEMS = {
         [("Bill in advance or use monthly retainers",
           "Services cannot be repossessed - get paid before or during the work.")]),
 
-    # ---------------- Symptom-based ----------------
+    # symptom-based
     "overtrading": _p(
         "Overtrading (growth outpacing cash)", "High",
         "Sales are growing but cash is shrinking - growth is consuming working capital.",
@@ -299,9 +284,7 @@ PROBLEMS = {
 }
 
 
-# Plain-language "concern" phrases used in the report summary:
-#   "The main concern is that <concern>."
-# {placeholders} are filled from working-memory facts (see explanation.plain_summary).
+# plain "concern" phrases for the summary; {placeholders} come from facts
 CONCERNS = {
     "weak_current_ratio": "you owe more in the short term than you have in short-term assets",
     "borderline_current_ratio": "your short-term assets only just cover what you owe soon",

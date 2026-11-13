@@ -1,16 +1,4 @@
-"""
-formulas.py - Named formulas used by COMPUTE rules.
-
-A COMPUTE rule says e.g.  Compute("current_ratio", "current_ratio").
-The engine looks the formula up in FORMULAS and calls it with
-(working memory, thresholds).
-
-DIVISION-BY-ZERO SAFETY
-  Every division goes through safe_div(). If the denominator is 0 (e.g. no
-  current liabilities, no sales, no fixed costs) the result is None, which
-  means "not computable". The engine stores None, and ANY condition that
-  tests a None fact is simply FALSE - so dependent rules safely skip.
-"""
+"""Named formulas for COMPUTE rules; every division is zero-safe via safe_div()."""
 from knowledge_base.problems import PROBLEMS
 
 
@@ -29,7 +17,7 @@ def _sum(wm, *names):
     return sum(values)
 
 
-# ---------------- Ratio analysis ----------------
+# ratio analysis
 def liquid_cash(wm, th):
     return _sum(wm, "cash_in_hand", "bank_balance")
 
@@ -47,7 +35,7 @@ def current_ratio(wm, th):
 
 
 def quick_ratio(wm, th):
-    # Quick assets exclude inventory (stock cannot always be sold quickly)
+    # quick assets exclude stock
     return safe_div(_sum(wm, "liquid_cash", "accounts_receivable"), current_liabilities(wm))
 
 
@@ -60,14 +48,13 @@ def working_capital(wm, th):
     return None if ca is None or cl is None else ca - cl
 
 
-# ---------------- Cash runway & cash flow ----------------
+# cash runway and cash flow
 def monthly_gross_profit(wm, th):
     sales, margin = wm.get("monthly_sales"), wm.get("gross_margin_pct")
     return None if sales is None or margin is None else sales * margin / 100
 
 
 def runway_days(wm, th):
-    # cash / (monthly fixed expenses + installment) * 30
     monthly_outflow = _sum(wm, "monthly_fixed_expenses", "monthly_installment")
     months = safe_div(wm.get("liquid_cash"), monthly_outflow)
     return None if months is None else months * 30
@@ -79,9 +66,9 @@ def net_monthly_cash_flow(wm, th):
     return None if gp is None or outflow is None else gp - outflow
 
 
-# ---------------- Receivables ----------------
+# receivables
 def receivables_to_sales(wm, th):
-    # How many months of sales are sitting with customers
+    # months of sales owed by customers
     return safe_div(wm.get("accounts_receivable"), wm.get("monthly_sales"))
 
 
@@ -90,35 +77,32 @@ def credit_gap_days(wm, th):
     return None if c is None or p is None else c - p
 
 
-# ---------------- Inventory ----------------
+# inventory
 def inventory_to_sales(wm, th):
     return safe_div(wm.get("inventory_value"), wm.get("monthly_sales"))
 
 
-# ---------------- Payables ----------------
+# payables
 def cash_conversion_cycle(wm, th):
-    # CCC = days to sell stock + days to collect - days to pay suppliers
+    # stock days + collection days - payment days
     s, c, p = wm.get("stock_days"), wm.get("collection_days"), wm.get("payment_days")
     if None in (s, c, p):
         return None
     return s + c - p
 
 
-# ---------------- Debt ----------------
+# debt
 def debt_service_ratio(wm, th):
-    # Share of monthly gross profit consumed by the loan installment
+    # share of gross profit taken by the installment
     installment = wm.get("monthly_installment")
     if installment == 0:
-        return 0.0          # no loan -> nothing to service (even if GP is 0)
+        return 0.0          # no loan to service
     return safe_div(installment, wm.get("monthly_gross_profit"))
 
 
-# ---------------- Final status ----------------
+# final status
 def health_score(wm, th):
-    """
-    100 - sum(severity weight x CF of each problem) + bonus for strengths,
-    clamped to 0..100. Weights and bonus come from thresholds.json.
-    """
+    """100 - sum(severity weight x CF) + strength bonus, clamped to 0..100."""
     weights = {
         "Critical": th["weight_critical"], "High": th["weight_high"],
         "Medium": th["weight_medium"], "Low": th["weight_low"],
@@ -130,18 +114,17 @@ def health_score(wm, th):
 
 
 def critical_problem_count(wm, th):
-    """Critical problems that are Likely or stronger: combined CF >= cap_min_cf.
-    A merely Possible Critical problem (e.g. from a 'Not sure' answer) does not cap."""
+    """Critical problems with combined CF >= cap_min_cf (these cap the status)."""
     return sum(1 for key, rec in wm.problems.items()
                if PROBLEMS[key]["severity"] == "Critical" and rec.cf >= th["cap_min_cf"])
 
 
 def serious_problem_count(wm, th):
-    """All Critical and High problems at ANY CF - each one blocks a Healthy status."""
+    """Critical and High problems at any CF (these block Healthy)."""
     return sum(1 for key in wm.problems if PROBLEMS[key]["severity"] in ("Critical", "High"))
 
 
-# Registry: formula name -> (function, human-readable formula for explanations)
+# formula name -> (function, readable formula)
 FORMULAS = {
     "liquid_cash": (liquid_cash, "cash_in_hand + bank_balance"),
     "current_ratio": (current_ratio, "(liquid_cash + receivables + inventory) / (payables + short-term loans + other liabilities)"),

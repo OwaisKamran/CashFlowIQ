@@ -1,11 +1,4 @@
-"""
-explanation.py - The EXPLANATION FACILITY.
-
-HOW  : how did the system reach its conclusion?
-       -> the rule-firing trace, in order, with the facts each rule matched.
-WHY  : why is this question asked?      -> which rules use this input fact
-       why was this decision recommended? -> problem + supporting rules + CF math
-"""
+"""Explanation facility: HOW (rule trace), WHY (questions, decisions) and plain summaries."""
 from knowledge_base.formulas import FORMULAS
 from knowledge_base.problems import PROBLEMS
 from knowledge_base.rule_model import NOT_SURE, Compute
@@ -25,11 +18,9 @@ def _fmt(value):
     return str(value)
 
 
-# ----------------------------------------------------------------------
 # HOW
-# ----------------------------------------------------------------------
 def how_table(trace) -> list:
-    """One row per fired rule - shown as a table in the UI."""
+    """One row per fired rule."""
     return [{
         "Step": step.cycle,
         "Rule": step.rule_id,
@@ -44,7 +35,7 @@ def how_table(trace) -> list:
 
 
 def how_text(trace) -> str:
-    """Plain-text version of the trace (for printing / download)."""
+    """Plain-text trace for download."""
     lines = []
     for step in trace:
         lines.append(f"Step {step.cycle}: {step.rule_id} fired - {step.description}")
@@ -58,15 +49,9 @@ def how_text(trace) -> str:
     return "\n".join(lines)
 
 
-# ----------------------------------------------------------------------
 # WHY a question is asked
-# ----------------------------------------------------------------------
 def rules_using_fact(fact: str, rules) -> tuple:
-    """
-    Return (direct, indirect) rule IDs that use a fact.
-    direct   : the fact appears in the rule's conditions
-    indirect : the fact feeds a COMPUTE rule whose result is used further on
-    """
+    """(direct, indirect) IDs of rules using a fact, indirect = via computed facts."""
     direct = [r.id for r in rules if any(c.fact == fact for c in r.conditions)]
     seen_facts, frontier, indirect = {fact}, [fact], []
     while frontier:
@@ -82,9 +67,7 @@ def rules_using_fact(fact: str, rules) -> tuple:
     return direct, sorted(indirect, key=lambda x: int(x[1:]))
 
 
-# ----------------------------------------------------------------------
 # WHY a decision / problem
-# ----------------------------------------------------------------------
 def why_problem(problem: dict, trace) -> str:
     steps = {s.rule_id: s for s in trace}
     lines = [f"**{problem['title']}** ({problem['severity']}, confidence {problem['cf']:.0%})",
@@ -119,9 +102,7 @@ def why_decision(decision: dict, result) -> str:
     return "\n".join(lines)
 
 
-# ----------------------------------------------------------------------
-# PLAIN-ENGLISH SUMMARY (generated from facts + fired rules)
-# ----------------------------------------------------------------------
+# plain-English summary
 STATUS_SENTENCE = {
     "Healthy": "{name} is HEALTHY: no serious cash-flow problems were found.",
     "Watch": "{name} is on WATCH: there is no emergency, but some issues need attention.",
@@ -130,7 +111,7 @@ STATUS_SENTENCE = {
 }
 
 
-# Problems whose message is already given by the "your cash covers N days" sentence
+# already covered by the "your cash covers N days" sentence
 CASH_PROBLEMS = {"cash_runs_out_within_month", "short_cash_runway", "imminent_cash_crisis",
                  "monthly_cash_burn", "thin_cash_buffer"}
 
@@ -145,7 +126,7 @@ def _rs(value):
 
 
 def summary_facts(wm) -> dict:
-    """Facts formatted for plain sentences (used by the CONCERNS templates)."""
+    """Facts formatted for the CONCERNS templates."""
     g = wm.get
     out = _SafeFacts()
     for key, fmt in (("collection_days", "{:.0f}"), ("payment_days", "{:.0f}"),
@@ -175,10 +156,7 @@ def concern(problem_key: str, facts: dict) -> str:
 
 
 def plain_summary(result) -> list:
-    """
-    2-3 plain sentences: status, how long the cash lasts, and the main concern.
-    Built only from facts in working memory and the problems the rules raised.
-    """
+    """2-3 plain sentences: status, how long the cash lasts, the main concern."""
     name = result.inputs.get("business_name") or "Your business"
     if not result.sufficient:
         labels = ", ".join(m["label"].lower() for m in result.missing)
@@ -199,12 +177,11 @@ def plain_summary(result) -> list:
                          "after fixed costs and loan payments.")
 
     facts = summary_facts(wm)
-    # Problems raised only from "Not sure" answers are not stated as facts
+    # "Not sure"-only problems are not stated as facts
     certain = [p for p in result.problems if not p.get("unsure")]
     unsure = [p for p in result.problems if p.get("unsure")]
     if certain:
-        # Cash-runway problems are already described by the cash sentence above,
-        # so the "main concern" picks the most serious OTHER problems (no repeats).
+        # skip cash-runway problems already covered by the cash sentence
         covered = CASH_PROBLEMS if len(sentences) > 1 else set()
         others = [p for p in certain if p["key"] not in covered]
         phrases = list(dict.fromkeys(concern(p["key"], facts) for p in (others or certain)))

@@ -1,11 +1,4 @@
-"""
-components.py - Shared look-and-feel for the Streamlit UI.
-
-Design rules (a calm financial-report style):
-  * one accent colour (deep navy), neutral greys, white background
-  * red / amber / green are used ONLY for status and severity
-  * money as "Rs 1,250,000", ratios with 2 decimals, days as whole numbers
-"""
+"""Shared styling, formatting and small HTML helpers for the UI."""
 from html import escape
 
 import streamlit as st
@@ -123,9 +116,7 @@ CSS = f"""
 """
 
 
-# ----------------------------------------------------------------------
-# Session state shared by all pages
-# ----------------------------------------------------------------------
+# session state shared by all pages
 def init_state():
     if "thresholds" not in st.session_state:
         st.session_state.thresholds = load_thresholds()
@@ -141,11 +132,9 @@ def inject_css():
     st.markdown(CSS, unsafe_allow_html=True)
 
 
-# ----------------------------------------------------------------------
-# Number formatting
-# ----------------------------------------------------------------------
+# number formatting
 def rs(value) -> str:
-    """Rs 1,250,000  /  -Rs 130,000  /  N/A"""
+    """Format money as Rs 1,250,000."""
     if value is None:
         return "N/A"
     return f"{'-' if value < 0 else ''}Rs {abs(value):,.0f}"
@@ -159,9 +148,7 @@ def days(value) -> str:
     return "N/A" if value is None else f"{value:,.0f} days"
 
 
-# ----------------------------------------------------------------------
-# Small HTML building blocks
-# ----------------------------------------------------------------------
+# small HTML building blocks
 def e(text) -> str:
     return escape(str(text))
 
@@ -175,8 +162,7 @@ def dot(colour: str) -> str:
 
 
 def score_bar(score: float, th: dict, status: str = "") -> str:
-    """Flat score bar: coloured number, a marker at the score (visible even at 0),
-    and the status bands underneath."""
+    """Health score bar with a marker and the status bands."""
     crisis, watch, healthy = th["crisis_score"], th["watch_score"], th["healthy_score"]
     colour = STATUS_COLOR.get(status, NAVY)
     ticks = "".join(f"<div class='tick' style='left:{v}%'></div>" for v in (crisis, watch, healthy))
@@ -207,13 +193,7 @@ def stepper(current: int, steps: dict, skipped: set, review: bool = False) -> st
             f"<div class='track'>{''.join(segs)}</div></div>")
 
 
-# ----------------------------------------------------------------------
-# Enter key: move to the next box (and press Next on the last box)
-# ----------------------------------------------------------------------
-# Streamlit saves a text box on Enter but leaves the cursor in it, so the next
-# figure typed is appended to the same box. This small script (injected once into
-# the page) moves the cursor to the next input instead; on the last input of the
-# page it clicks the main action button. It only changes keyboard navigation.
+# Enter key: move to the next box, press Next on the last box
 _ENTER_JS = """
 (function () {
   if (window.__cfEnterNav) return;
@@ -286,14 +266,14 @@ _ENTER_JS = """
 
 
 def enable_enter_navigation():
-    """Inject _ENTER_JS into the main page (once). Rendered in the sidebar, height 0."""
+    """Inject the Enter-key script into the page once."""
     import json
     loader = ("<script>var d = window.parent.document;"
               "if (!d.getElementById('cf-enter-nav')) {"
               "var s = d.createElement('script'); s.id = 'cf-enter-nav';"
               f"s.textContent = {json.dumps(_ENTER_JS)}; d.head.appendChild(s);}}</script>")
     with st.sidebar:
-        st.iframe(loader, height=1)          # our own static script - not user content
+        st.iframe(loader, height=1)
 
 
 def footer():
