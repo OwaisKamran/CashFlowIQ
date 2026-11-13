@@ -32,10 +32,15 @@ from ui import components                                           # noqa: E402
 
 LIVE_URL = "https://cashflow-iq.streamlit.app/"
 GITHUB_URL = "https://github.com/OwaisKamran/CashFlowIQ"
-NAVY = RGBColor(0x1F, 0x3A, 0x5F)
+NAVY = RGBColor(0x1E, 0x3A, 0x5F)          # ui/styles.py NAVY
+TEAL = "0F766E"                            # ui/styles.py TEAL (links)
+DARK = RGBColor(0x26, 0x26, 0x26)
 GREY = RGBColor(0x59, 0x59, 0x59)
 LINE_NO = RGBColor(0x8A, 0x93, 0x9F)
 EXAMPLE = "Hamza Textiles Wholesale (Watch)"
+STUDENT = "Muhammad Owais Kamran Khania"
+ROLL_NO = "CT-24085"
+SUBMITTED_TO = "Sir Wasiq Noor"
 
 # Word: update the table of contents and fields, then export the PDF
 WORD_PS = r"""
@@ -44,8 +49,11 @@ $w = New-Object -ComObject Word.Application
 $w.Visible = $false; $w.DisplayAlerts = 0
 try {
     $d = $w.Documents.Open($Docx)
-    foreach ($id in -20, -21) { $s = $d.Styles.Item($id); $s.Font.Name = "Calibri"; $s.Font.Size = 11 }
-    $d.Styles.Item(-20).Font.Bold = $true
+    foreach ($id in -20, -21) {
+        $s = $d.Styles.Item($id); $s.Font.Name = "Calibri"; $s.Font.Size = 11; $s.Font.Bold = $false
+        $s.ParagraphFormat.SpaceAfter = 5
+    }
+    $d.Styles.Item(-21).ParagraphFormat.LeftIndent = 11
     $d.Fields.Update() | Out-Null
     foreach ($t in $d.TablesOfContents) { $t.Update() }
     $d.Repaginate()
@@ -96,20 +104,21 @@ class Doc:
         set_font(normal.element, "Calibri")
         pf = normal.paragraph_format
         pf.line_spacing, pf.space_after, pf.alignment = 1.15, Pt(6), WD_ALIGN_PARAGRAPH.JUSTIFY
-        for name, size, before, after in (("Heading 1", 16, 0, 10), ("Heading 2", 13, 14, 6)):
+        for name, size, before, after in (("Heading 1", 16, 18, 6), ("Heading 2", 13, 12, 6)):
             st = styles[name]
             st.font.size, st.font.bold, st.font.italic, st.font.color.rgb = Pt(size), True, False, NAVY
             set_font(st.element, "Cambria")
             st.paragraph_format.space_before, st.paragraph_format.space_after = Pt(before), Pt(after)
             st.paragraph_format.keep_with_next = True
             st.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            st.paragraph_format.line_spacing = 1.15
         cap = styles["Caption"]
-        cap.font.size, cap.font.italic, cap.font.bold, cap.font.color.rgb = Pt(9), True, False, RGBColor(0, 0, 0)
+        cap.font.size, cap.font.italic, cap.font.bold, cap.font.color.rgb = Pt(9), True, False, DARK
         set_font(cap.element, "Calibri")
         cap.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
         lb = styles["List Bullet"]
         set_font(lb.element, "Calibri"); lb.font.size = Pt(11)
-        lb.paragraph_format.space_after = Pt(3)
+        lb.paragraph_format.space_after = Pt(3); lb.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.LEFT
         self._header_footer(sec)
 
     # header "CashFlow IQ – Code Explanation" and footer "Page X of Y" (not on the cover)
@@ -118,10 +127,6 @@ class Doc:
         hp = sec.header.paragraphs[0]; hp.alignment = WD_ALIGN_PARAGRAPH.RIGHT
         r = hp.add_run("CashFlow IQ – Code Explanation"); r.font.size = Pt(9); r.font.color.rgb = GREY
         set_font(r._element, "Calibri")
-        border = OxmlElement("w:pBdr"); bottom = OxmlElement("w:bottom")
-        for k, v in (("w:val", "single"), ("w:sz", "4"), ("w:space", "4"), ("w:color", "A6A6A6")):
-            bottom.set(qn(k), v)
-        border.append(bottom); hp._p.get_or_add_pPr().append(border)
         fp = sec.footer.paragraphs[0]; fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
         for piece in ("Page ", ("PAGE", "1"), " of ", ("NUMPAGES", "1")):
             if isinstance(piece, tuple):
@@ -173,6 +178,7 @@ class Doc:
             self.runs(self.d.add_paragraph(style="List Bullet"), item)
 
     def h(self, text, level):
+        text = re.sub(r"^(\d+(?:\.\d+)?)\s+", r"\1 ", text)          # "1 How to Run"
         self.d.add_heading(text, level=level)
 
     def page_break(self):
@@ -182,7 +188,7 @@ class Doc:
         rid = par.part.relate_to(url, RELATIONSHIP_TYPE.HYPERLINK, is_external=True)
         h = OxmlElement("w:hyperlink"); h.set(qn("r:id"), rid)
         r = OxmlElement("w:r"); rpr = OxmlElement("w:rPr")
-        for tag, val in (("w:color", "0563C1"), ("w:u", "single")):
+        for tag, val in (("w:color", TEAL), ("w:u", "single")):
             el = OxmlElement(tag); el.set(qn("w:val"), val); rpr.append(el)
         if bold:
             rpr.append(OxmlElement("w:b"))
@@ -191,7 +197,7 @@ class Doc:
         r.append(rpr); t = OxmlElement("w:t"); t.text = text; r.append(t); h.append(r)
         par._p.append(h)
 
-    def _borders(self, table, color="A6A6A6"):
+    def _borders(self, table, color="BFBFBF"):
         b = OxmlElement("w:tblBorders")
         for edge in ("top", "left", "bottom", "right", "insideH", "insideV"):
             e = OxmlElement(f"w:{edge}")
@@ -212,7 +218,7 @@ class Doc:
         c.add_run("Table "); self.field(c, "SEQ Table \\* ARABIC", str(self.tables))
         c.add_run(f": {smart(text)}")
         c.paragraph_format.keep_with_next = True
-        c.paragraph_format.space_before = Pt(6)
+        c.paragraph_format.space_before = Pt(2); c.paragraph_format.space_after = Pt(4)
 
     def table(self, header, rows, widths, caption=None, size=10):
         if caption:
@@ -229,11 +235,12 @@ class Doc:
                 cell = row.cells[j]; cell.width = Cm(widths[j])
                 par = cell.paragraphs[0]
                 par.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                par.paragraph_format.space_before = Pt(1)
                 par.paragraph_format.space_after = Pt(1); par.paragraph_format.line_spacing = 1.0
-                par.paragraph_format.keep_with_next = i < len(rows) and len(rows) < 14
+                par.paragraph_format.keep_with_next = i < len(rows)      # keep the table on one page
                 self.runs(par, str(value), size=size)
                 if i == 0:
-                    self._shade(cell, "1F3A5F")
+                    self._shade(cell, "1E3A5F")
                     for r in par.runs:
                         r.bold = True; r.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
         for j, w in enumerate(widths):
@@ -241,14 +248,30 @@ class Doc:
                 cell.width = Cm(w)
         self.d.add_paragraph().paragraph_format.space_after = Pt(2)
 
+    def cover_table(self, rows):
+        """Borderless details table on the cover (bold labels, 12 pt)."""
+        info = self.d.add_table(rows=len(rows), cols=2); info.alignment = WD_TABLE_ALIGNMENT.CENTER
+        for i, (k, v) in enumerate(rows):
+            for j, w in enumerate((4.0, 8.6)):
+                cell = info.rows[i].cells[j]; cell.width = Cm(w)
+                par = cell.paragraphs[0]; par.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                par.paragraph_format.space_after = Pt(4)
+                if j == 0:
+                    run = par.add_run(k); run.bold = True; run.font.size = Pt(12)
+                elif v.startswith("http"):
+                    self.link(par, v, v, size=12)
+                else:
+                    run = par.add_run(v); run.font.size = Pt(12)
+
     def code(self, lines, start=1, title=None):
         """Code excerpt: Consolas 9 pt on light grey, with line numbers."""
         if title:
             cap = self.d.add_paragraph()
-            r = cap.add_run(title); r.font.size = Pt(9); r.font.color.rgb = GREY; r.italic = True
+            r = cap.add_run(title); r.font.size = Pt(9); r.font.color.rgb = DARK; r.italic = True
             cap.paragraph_format.space_after = Pt(2); cap.paragraph_format.keep_with_next = True
         t = self.d.add_table(rows=1, cols=1); t.alignment = WD_TABLE_ALIGNMENT.CENTER
         self._borders(t, "D9DEE3")
+        t.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:cantSplit"))   # never split an excerpt
         cell = t.rows[0].cells[0]; cell.width = Cm(15.9); self._shade(cell, "F3F4F6")
         width = len(str(start + len(lines)))
         for k, line in enumerate(lines):
@@ -271,7 +294,7 @@ class Doc:
 
     def save(self, path):
         self.d.core_properties.title = "CashFlow IQ – Code Explanation"
-        self.d.core_properties.author = "Owais"
+        self.d.core_properties.author = "Muhammad Owais Kamran Khania"
         self.d.save(path)
 
 
@@ -311,50 +334,32 @@ def build(doc: Doc, url: str):
     passed, failed, per_file = test_counts()
     total_tests = sum(per_file.values())
 
-    # cover
-    def centre(text, size, bold=False, color=RGBColor(0, 0, 0), before=0, after=6, font="Calibri"):
+    # cover (reference layout: title, subtitle, three centred lines, details table)
+    def centre(text, size, after, font="Calibri", bold=False, color=None):
         par = d.add_paragraph(); par.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        par.paragraph_format.space_before, par.paragraph_format.space_after = Pt(before), Pt(after)
-        r = par.add_run(text); r.font.size = Pt(size); r.bold = bold; r.font.color.rgb = color
-        set_font(r._element, font)
-        return par
+        par.paragraph_format.space_before, par.paragraph_format.space_after = Pt(0), Pt(after)
+        if text:
+            r = par.add_run(text); r.font.size = Pt(size); r.bold = bold
+            if color is not None:
+                r.font.color.rgb = color
+            set_font(r._element, font)
 
-    def rule_line(before, after):
-        par = d.add_paragraph()
-        par.paragraph_format.space_before, par.paragraph_format.space_after = Pt(before), Pt(after)
-        b = OxmlElement("w:pBdr"); e = OxmlElement("w:bottom")
-        for k, v in (("w:val", "single"), ("w:sz", "8"), ("w:space", "1"), ("w:color", "1F3A5F")):
-            e.set(qn(k), v)
-        b.append(e); par._p.get_or_add_pPr().append(b)
-
-    centre("NED University of Engineering & Technology", 15, True, NAVY, before=30, font="Cambria")
-    centre("Introduction to Artificial Intelligence (IAI) – CCP", 12, after=4)
-    rule_line(56, 10)
-    centre("CashFlow IQ", 30, True, NAVY, before=4, after=2, font="Cambria")
-    centre("Business Liquidity & Cash Flow Decision Expert System", 15, color=NAVY, after=8, font="Cambria")
-    centre("Code Explanation", 20, True, RGBColor(0x26, 0x26, 0x26), after=6, font="Cambria")
-    rule_line(4, 30)
-    live = d.add_paragraph(); live.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    live.paragraph_format.space_after = Pt(2)
-    r = live.add_run("Live application"); r.font.size = Pt(11); r.font.color.rgb = GREY
-    lk = d.add_paragraph(); lk.alignment = WD_ALIGN_PARAGRAPH.CENTER; lk.paragraph_format.space_after = Pt(14)
-    doc.link(lk, url, url, size=16, bold=True)
-    gh = d.add_paragraph(); gh.alignment = WD_ALIGN_PARAGRAPH.CENTER; gh.paragraph_format.space_after = Pt(40)
-    r = gh.add_run("Source code: "); r.font.size = Pt(11); r.font.color.rgb = GREY
-    doc.link(gh, GITHUB_URL, GITHUB_URL, size=11)
-    info = d.add_table(rows=4, cols=2); info.alignment = WD_TABLE_ALIGNMENT.CENTER
-    for i, (k, v) in enumerate((("Student name", "Owais"), ("Roll No", "________________"),
-                                ("Submitted to", "________________"), ("Date", f"{date.today():%d %B %Y}"))):
-        for j, (txt, bold) in enumerate(((k, True), (v, False))):
-            cell = info.rows[i].cells[j]; cell.width = Cm(4.5 if j == 0 else 7.0)
-            par = cell.paragraphs[0]; par.alignment = WD_ALIGN_PARAGRAPH.LEFT
-            par.paragraph_format.space_after = Pt(5)
-            run = par.add_run(txt); run.bold = bold; run.font.size = Pt(11.5)
+    for _ in range(5):
+        centre("", 11, 6)
+    centre("CashFlow IQ", 26, 10, "Cambria", True, NAVY)
+    centre("Business Liquidity & Cash Flow Decision Expert System", 14, 40, "Cambria", color=DARK)
+    centre("Code Explanation", 12, 4)
+    centre("CT-262 Introduction to Artificial Intelligence (IAI) \u2013 CCP", 12, 4)
+    centre("NED University of Engineering & Technology", 12, 48)
+    doc.cover_table([("Student name", STUDENT), ("Roll No", ROLL_NO), ("Submitted to", SUBMITTED_TO),
+                     ("Date", f"{date.today():%d %B %Y}"), ("Live application", url),
+                     ("GitHub repository", GITHUB_URL)])
     doc.page_break()
 
     # table of contents
     t = d.add_paragraph(); r = t.add_run("Table of Contents"); r.bold = True; r.font.size = Pt(16)
     r.font.color.rgb = NAVY; set_font(r._element, "Cambria"); t.paragraph_format.space_after = Pt(12)
+    t.alignment = WD_ALIGN_PARAGRAPH.LEFT
     doc.field(d.add_paragraph(), 'TOC \\o "1-2" \\h \\z \\u', "Update the field to build the table of contents.")
     doc.page_break()
 
@@ -379,7 +384,6 @@ def build(doc: Doc, url: str):
     doc.code(["pip install -r requirements-dev.txt", "pytest -q"], 1, "Command Prompt (with .venv active)")
     doc.p(f"All {total_tests} tests should pass. `requirements-dev.txt` adds *pytest* and *python-docx* "
           "(used only to build this document).")
-    doc.page_break()
 
     # 2 structure
     doc.h("2  Project Structure", 1)
@@ -433,7 +437,6 @@ def build(doc: Doc, url: str):
         ["User interface", "`app.py`, `views/`, `ui/`", "Consultation wizard, Quick Diagnosis, report, expert pages"],
         ["Knowledge acquisition", "`views/admin.py`", "An expert edits and validates the thresholds in the browser"],
     ], [3.4, 5.6, 6.9], "Expert system components and their files")
-    doc.page_break()
 
     # 3 file by file
     doc.h("3  File-by-File Explanation", 1)
@@ -572,7 +575,6 @@ def build(doc: Doc, url: str):
         "small browser scripts (Enter key moves to the next box; number boxes accept only digits).",
     ])
     doc.source(components.score_ring, "ui/components.py – the health score ring")
-    doc.page_break()
 
     # 4 worked example
     case = SAMPLE_CASES[EXAMPLE]
@@ -633,7 +635,6 @@ def build(doc: Doc, url: str):
           f"The score is between {th['watch_score']:.0f} and {th['healthy_score']:.0f} and there is no Critical "
           f"problem, so rule **{status_step.rule_id}** sets the status to **{result.status}**. The top "
           f"recommended action is: *{result.decisions[0]['text']}*.")
-    doc.page_break()
 
     # 5 testing
     doc.h("5  Testing", 1)
