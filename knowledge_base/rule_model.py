@@ -42,7 +42,15 @@ class F:
 #   unknown                   fact has NOT been asserted yet (e.g. "no status yet")
 #   missing                   fact was not provided (absent or None)  - data checks
 #   empty                     fact is missing OR equal to 0           - data checks
-#   not_yes                   Yes/No fact is not Yes (No or not given)
+#   yes                       Yes/No/Not sure fact is Yes - or Not sure (uncertain evidence)
+#   not_yes                   Yes/No fact is No or not given (Not sure is NOT a No)
+#
+# A "Not sure" answer is stored as the value NOT_SURE with CF = not_sure_cf
+# (thresholds.json). A `yes` condition matches it, and the engine's usual
+# MYCIN rule  conclusion CF = rule CF x min(premise CFs)  scales the conclusion.
+NOT_SURE = "not_sure"
+
+
 @dataclass(frozen=True)
 class Condition:
     fact: str
@@ -61,6 +69,8 @@ class Condition:
             return f"{self.fact} is missing or 0"
         if self.op == "not_yes":
             return f"{self.fact} is not Yes"
+        if self.op == "yes":
+            return f"{self.fact} = Yes"
         if self.fact.startswith("problem:"):
             return f"problem '{self.fact[8:]}' diagnosed"
         if self.op == "==" and self.value is True:
@@ -197,8 +207,8 @@ def known(fact: str) -> Condition:
 
 
 def yes(fact: str) -> Condition:
-    """A Yes/No symptom answered 'Yes'."""
-    return Condition(fact, "==", True)
+    """A symptom answered 'Yes' - also matches 'Not sure', at reduced certainty."""
+    return Condition(fact, "yes", True)
 
 
 def has_problem(key: str) -> Condition:

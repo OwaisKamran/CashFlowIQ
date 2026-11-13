@@ -16,6 +16,7 @@ import streamlit as st
 from engine.explanation import figure_meaning, how_table, how_text, plain_summary, why_decision
 from knowledge_base.formulas import FORMULAS
 from knowledge_base.questions import BUSINESS_TYPE_LABELS, SEASON_LABELS
+from knowledge_base.rule_model import NOT_SURE
 from knowledge_base.rules import RULES
 from ui.components import (
     MUTED, SEVERITY_COLOR, STATE_COLOR, STATUS_COLOR, days, dot, e, ratio, rs, score_bar, section,
@@ -81,6 +82,7 @@ def _figures_table(result, th) -> str:
 URGENCY = {"Critical": "Do this now", "High": "Do this soon", "Medium": "Worth doing",
            "Low": "When convenient"}
 SERIOUSNESS = {"Critical": "Critical", "High": "Serious", "Medium": "Moderate", "Low": "Minor"}
+UNSURE_LINE = "You weren't sure about this — worth checking."
 
 
 def likelihood(cf: float) -> str:
@@ -164,16 +166,19 @@ def render_report(result, th, key="report"):
         items = []
         for p in result.problems:
             sev_colour = SEVERITY_COLOR[p["severity"]]
+            # Raised only from "Not sure" answers -> always "Possible", with a nudge to check
+            unsure = (f"<div class='meta'>{e(UNSURE_LINE)}</div>" if p.get("unsure") else "")
             if tech:
                 rules = " + ".join(ev[0] for ev in p["evidence"])
                 note = " (certainty factors combined)" if len(p["evidence"]) > 1 else ""
-                meta = f"<div class='meta'>Found by rule {rules}{note}</div>"
+                meta = f"{unsure}<div class='meta'>Found by rule {rules}{note}</div>"
                 conf = (f"CF {p['cf']:.2f}<div class='cf-bar'>"
                         f"<div style='width:{p['cf'] * 100:.0f}%'></div></div>")
                 sev = p["severity"]
             else:
-                meta = ""
-                conf = f"<span class='cf-muted'>{likelihood(p['cf'])}</span>"
+                meta = unsure
+                word = "Possible" if p.get("unsure") else likelihood(p["cf"])
+                conf = f"<span class='cf-muted'>{word}</span>"
                 sev = SERIOUSNESS[p["severity"]]
             items.append(
                 f"<div class='cf-item'><div class='sev' style='color:{sev_colour}'>{sev}</div>"
@@ -221,6 +226,8 @@ def _render_how(result, key):
 
 
 def _show(value):
+    if value == NOT_SURE:
+        return "Not sure"
     if isinstance(value, bool):
         return "Yes" if value else "No"
     if isinstance(value, float):

@@ -29,7 +29,7 @@ from engine.working_memory import WorkingMemory
 from knowledge_base.formulas import FORMULAS
 from knowledge_base.problems import PROBLEMS
 from knowledge_base.rule_model import (
-    T, F, Compute, Assert, RaiseProblem, AddStrength, Recommend, FlagMissing, Warn, Halt,
+    NOT_SURE, T, F, Compute, Assert, RaiseProblem, AddStrength, Recommend, FlagMissing, Warn, Halt,
 )
 
 OPERATORS = {
@@ -63,8 +63,10 @@ def evaluate_condition(condition, wm: WorkingMemory, thresholds: dict) -> bool:
         return actual is None
     if op == "empty":
         return actual is None or actual == 0
-    if op == "not_yes":                         # a Yes/No fact that is not "Yes" (or not given)
-        return actual is not True
+    if op == "yes":                             # Yes, or Not sure (its low CF scales the conclusion)
+        return actual is True or actual == NOT_SURE
+    if op == "not_yes":                         # No or not given - "Not sure" is not a No
+        return actual is not True and actual != NOT_SURE
     expected = resolve_value(condition.value, wm, thresholds)
     if actual is None or expected is None:      # None = not computable -> skip
         return False
@@ -82,6 +84,7 @@ class TraceStep:
     conclusions: list        # human-readable conclusions
     cf: float                # CF of this rule's conclusion
     conflict_set: list = field(default_factory=list)   # rule IDs that were eligible
+    unsure: list = field(default_factory=list)         # premises resting on a "Not sure" answer
 
 
 class InferenceEngine:
@@ -121,9 +124,19 @@ class InferenceEngine:
     # 3. FIRE
     # ------------------------------------------------------------------
     def fire(self, rule, wm: WorkingMemory, conflict_set: list):
-        # Snapshot of the facts that made this rule match (for explanations)
-        matched = [(c.describe(), wm.get(c.fact), self._resolve_value(c.value, wm))
+        # Snapshot of the facts that made this rule match (for explanations).
+        # A "Not sure" answer is shown with its reduced CF.
+        matched = [(c.describe(),
+                    f"Not sure (CF {wm.get_cf(c.fact):.2f})" if wm.get(c.fact) == NOT_SURE
+                    else wm.get(c.fact),
+                    self._resolve_value(c.value, wm))
                    for c in rule.conditions]
+        # Premises that rest only on uncertain answers: a "Not sure" fact, or a
+        # problem that was itself raised only from "Not sure" answers (chaining).
+        unsure = [c.fact for c in rule.conditions
+                  if wm.get(c.fact) == NOT_SURE
+                  or (c.fact.startswith("problem:") and c.fact[8:] in wm.problems
+                      and wm.problems[c.fact[8:]].uncertain_only)]
         # CF of conclusion = rule CF x weakest premise CF
         premise_cfs = [wm.get_cf(c.fact) for c in rule.conditions
                        if c.op not in ("unknown", "missing", "empty")]
@@ -146,7 +159,7 @@ class InferenceEngine:
                 conclusions.append(f"{action.fact} = {action.value}")
 
             elif isinstance(action, RaiseProblem):
-                before, after = wm.add_problem(action.key, cf, rule.id)
+                before, after = wm.add_problem(action.key, cf, rule.id, uncertain=bool(unsure))
                 title = PROBLEMS[action.key]["title"]
                 if before:
                     conclusions.append(f"PROBLEM '{title}' CF {before:.2f} combined with "
@@ -178,7 +191,7 @@ class InferenceEngine:
         self.trace.append(TraceStep(
             cycle=self.cycles, rule_id=rule.id, group=rule.group,
             description=rule.description, matched=matched, conclusions=conclusions,
-            cf=cf, conflict_set=[r.id for r in conflict_set]))
+            cf=cf, conflict_set=[r.id for r in conflict_set], unsure=unsure))
 
     # ------------------------------------------------------------------
     # The recognise-act loop

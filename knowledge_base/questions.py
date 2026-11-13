@@ -12,7 +12,7 @@ owes suppliers money". When a question is skipped, its `default` is used and
 """
 from dataclasses import dataclass, field
 
-from knowledge_base.rule_model import Condition as C
+from knowledge_base.rule_model import NOT_SURE, Condition as C
 
 BUSINESS_TYPES = ["retail", "wholesale", "manufacturing", "services", "restaurant", "trading"]
 BUSINESS_TYPE_LABELS = {
@@ -33,7 +33,7 @@ STEPS = {
     3: ("Customers who owe you", "Money you are waiting to receive from customers."),
     4: ("Stock", "Goods you hold for sale (or ingredients, for a restaurant)."),
     5: ("Suppliers & loans", "What you owe suppliers, the bank and others in the next year."),
-    6: ("Warning signs", "Quick Yes / No questions about how things are going."),
+    6: ("Warning signs", "Quick questions about how things are going. Answer Yes, No or Not sure."),
 }
 LIABILITY_STEP = 5
 
@@ -44,6 +44,7 @@ class Question:
     text: str                # plain-language label shown to the user
     label: str               # short name for the review table / transcript
     kind: str                # "text" | "choice" | "amount" | "days" | "percent" | "yesno" | "checkbox"
+    #                          yesno = Yes / No / Not sure, no pre-selected answer
     step: int
     help: str = ""           # one-line hint (shown as a tooltip)
     example: str = ""        # example value shown inside the empty field
@@ -160,6 +161,8 @@ QUESTIONS = [
 QUESTION_BY_KEY = {q.key: q for q in QUESTIONS}
 NUMERIC_FIELDS = {q.key: q for q in QUESTIONS if q.kind in ("amount", "days", "percent")}
 SYMPTOMS = {q.key: q.text for q in QUESTIONS if q.kind in ("yesno", "checkbox")}
+YES_NO_ANSWERS = {"Yes": True, "No": False, "Not sure": NOT_SURE}     # label -> stored value
+NO_ANSWER_ERROR = "Please choose an answer (pick 'Not sure' if you don't know)."
 
 
 def questions_in_step(step: int) -> list:
@@ -187,10 +190,10 @@ def parse_amount(text):
 
 
 def default_inputs() -> dict:
-    """An EMPTY form: numbers are None (= not entered), Yes/No answers are No."""
+    """An EMPTY form: numbers and Yes/No/Not sure answers are None (= not answered)."""
     data = {"business_name": "", "business_type": "retail", "season": "normal"}
     data.update({k: None for k in NUMERIC_FIELDS})
-    data.update({k: False for k in SYMPTOMS})
+    data.update({k: None if QUESTION_BY_KEY[k].kind == "yesno" else False for k in SYMPTOMS})
     return data
 
 
@@ -222,6 +225,10 @@ def validate_inputs(data: dict) -> list:
         elif value > q.max:
             errors.append(f"{q.label}: must not exceed {q.max:,.0f}.")
     for key in SYMPTOMS:
-        if not isinstance(data.get(key), bool):
-            errors.append(f"Symptom '{key}' must be Yes or No.")
+        value = data.get(key)
+        if QUESTION_BY_KEY[key].kind == "yesno":
+            if value is not None and value not in (True, False, NOT_SURE):
+                errors.append(f"Symptom '{key}' must be Yes, No or Not sure.")
+        elif not isinstance(value, bool):
+            errors.append(f"'{key}' must be ticked or not ticked.")
     return errors

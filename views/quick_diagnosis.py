@@ -33,7 +33,8 @@ def _load_sample():
     A.clear()
     A.update(data)
     for q in QUESTIONS:
-        st.session_state[fields.widget_key(PREFIX, q)] = fields.to_widget(q, data.get(q.key, q.default))
+        blank = None if q.kind == "yesno" else q.default      # Yes/No/Not sure: no pre-selection
+        st.session_state[fields.widget_key(PREFIX, q)] = fields.to_widget(q, data.get(q.key, blank))
     st.session_state.quick_result = None
     st.session_state.quick_errors, st.session_state.quick_step_errors = {}, {}
 

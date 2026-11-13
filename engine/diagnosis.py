@@ -13,6 +13,7 @@ from engine.inference_engine import InferenceEngine
 from engine.working_memory import WorkingMemory
 from knowledge_base import load_thresholds
 from knowledge_base.problems import PROBLEMS, SEVERITY_RANK
+from knowledge_base.rule_model import NOT_SURE
 from knowledge_base.rules import RULES
 
 # Facts shown as ratio cards on the Diagnose page
@@ -50,6 +51,10 @@ def diagnose(inputs: dict, thresholds: dict | None = None, rules=None) -> Diagno
     # Only pass facts to the engine (business_name is just a label)
     facts = {k: v for k, v in inputs.items() if k != "business_name"}
     wm = WorkingMemory(facts)
+    # A "Not sure" answer is uncertain evidence: CF = not_sure_cf instead of 1.0
+    for fact in wm.facts.values():
+        if fact.value == NOT_SURE:
+            fact.cf = thresholds["not_sure_cf"]
     engine = InferenceEngine(rules or RULES, thresholds)
     trace = engine.run(wm)
 
@@ -61,6 +66,7 @@ def diagnose(inputs: dict, thresholds: dict | None = None, rules=None) -> Diagno
             "key": key, "title": entry["title"], "severity": entry["severity"],
             "description": entry["description"], "cf": record.cf,
             "evidence": record.evidence, "decisions": entry["decisions"],
+            "unsure": record.uncertain_only,     # raised only from "Not sure" answers
         })
     problems.sort(key=lambda p: (-SEVERITY_RANK[p["severity"]], -p["cf"]))
 

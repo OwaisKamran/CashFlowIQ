@@ -30,6 +30,8 @@ class ProblemRecord:
     cf: float
     # Every rule that supported this problem: (rule_id, cf_from_rule, cf_after_combining)
     evidence: list = field(default_factory=list)
+    # True while EVERY supporting rule rested on a "Not sure" answer
+    uncertain_only: bool = False
 
 
 class WorkingMemory:
@@ -62,19 +64,21 @@ class WorkingMemory:
         return 1.0 if fact is None else fact.cf
 
     # ---------------- problems ----------------
-    def add_problem(self, key, cf, rule_id):
+    def add_problem(self, key, cf, rule_id, uncertain=False):
         """
         Record a diagnosis. If the problem already exists (another rule found it),
         combine the certainty factors MYCIN-style instead of overwriting.
+        `uncertain` = this rule's evidence rested on a "Not sure" answer.
         Returns (cf_before, cf_after).
         """
         if key in self.problems:
             record = self.problems[key]
             before = record.cf
             record.cf = combine(before, cf)
+            record.uncertain_only = record.uncertain_only and uncertain
         else:
             before = 0.0
-            record = self.problems[key] = ProblemRecord(key, cf)
+            record = self.problems[key] = ProblemRecord(key, cf, uncertain_only=uncertain)
         record.evidence.append((rule_id, cf, record.cf))
         # Also expose the problem as a fact so CHAINED rules can test it
         self.add_fact(f"problem:{key}", True, record.cf, rule_id)

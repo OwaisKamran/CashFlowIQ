@@ -4,7 +4,8 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from knowledge_base.questions import QUESTION_BY_KEY, questions_in_step
+from knowledge_base.questions import NO_ANSWER_ERROR, QUESTION_BY_KEY, questions_in_step
+from knowledge_base.rule_model import NOT_SURE
 from sample_cases import SAMPLE_CASES
 
 APP = str(Path(__file__).resolve().parents[1] / "app.py")
@@ -35,7 +36,7 @@ def _set(widget, q, value):
     if q.kind == "amount":
         widget.set_value("" if value is None else f"{value:,.0f}")
     elif q.kind == "yesno":
-        widget.set_value("Yes" if value else "No")
+        widget.set_value({True: "Yes", False: "No", NOT_SURE: "Not sure"}[value])
     elif q.kind == "checkbox":
         widget.set_value(bool(value))
     else:
@@ -208,11 +209,47 @@ def test_debt_free_business_through_the_wizard():
     assert _widget(at, QUESTION_BY_KEY["accounts_payable"], "w_") is None   # debt questions hidden
     _click(at, "wiz_next")
     assert at.session_state.consult_step == 6
+    _fill(at, questions_in_step(6), source, "w_")
     _click(at, "wiz_next")
     _click(at, "get_diagnosis")
     result = at.session_state.consult_result
     assert result.sufficient and result.status == "Healthy"
     assert any("No debt" in m.value for m in at.markdown)          # ratios explained, not N/A
+
+
+def test_warning_signs_need_an_answer_and_accept_not_sure():
+    at = _app()
+    _start(at)
+    for step in range(1, 6):
+        _fill(at, questions_in_step(step), LAHORE, "w_")
+        _click(at, "wiz_next")
+    assert at.session_state.consult_step == 6
+    radio = at.radio(key="w_overdue_tax")
+    assert radio.value is None and list(radio.options) == ["Yes", "No", "Not sure"]
+    _click(at, "wiz_next")                                           # nothing chosen
+    assert at.session_state.consult_step == 6
+    assert any(NO_ANSWER_ERROR.split(" (")[0] in m for m in _errors(at))
+    _fill(at, questions_in_step(6), dict(LAHORE, overdue_tax=NOT_SURE), "w_")
+    _click(at, "wiz_next")
+    assert at.session_state.consult_step == 7
+    _click(at, "get_diagnosis")
+    tax = at.session_state.consult_result.problem_by_key["tax_arrears"]
+    assert tax["unsure"] and tax["cf"] == 0.45
+    report = " ".join(m.value for m in at.markdown if "cf-item" in m.value)
+    assert "worth checking" in report and "Possible" in report
+
+
+def test_quick_diagnosis_blocks_unanswered_warning_signs():
+    at = _app()
+    at.switch_page(QUICK).run()
+    at.selectbox(key="sample_choice").select("Hamza Textiles Wholesale (Watch)").run()
+    at.radio(key="q_late_customers").set_value(None).run()
+    _click(at, "run_quick")
+    assert at.session_state.quick_result is None
+    assert any("Please choose an answer" in m for m in _errors(at))
+    at.radio(key="q_late_customers").set_value("Not sure").run()
+    _click(at, "run_quick")
+    assert at.session_state.quick_result.status == "Watch"
 
 
 def test_skip_notice_is_shown():

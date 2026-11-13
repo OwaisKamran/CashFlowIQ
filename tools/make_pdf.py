@@ -202,7 +202,7 @@ def build(url: str, out: Path):
     story += [P("1. Project overview", "h1"),
               P("CashFlow IQ is a **rule-based expert system** for small and medium businesses in "
                 "Pakistan (currency PKR). It works like a *doctor for business cash flow*: the owner "
-                "enters figures and answers Yes/No symptom questions; the system computes ratios "
+                "enters figures and answers Yes / No / Not sure symptom questions; the system computes ratios "
                 "(derived facts), diagnoses liquidity problems, and recommends cash-management "
                 "decisions, each with a confidence percentage and an explanation."),
               P("**Symptoms/figures → derived facts (ratios) → diagnosis (problems) → treatment "
@@ -217,9 +217,10 @@ def build(url: str, out: Path):
         "Figures: cash in hand, bank balance, receivables + collection days, payables + payment "
         "days, inventory + days to sell stock, monthly sales, gross margin %, fixed expenses, "
         "short-term loans, monthly installment, other current liabilities.",
-        "Nine Yes/No symptoms, e.g. delaying suppliers, customers paying late, stock piling up, "
-        "sales up but cash down, using personal money, planning expansion, one customer > 40% "
-        "of sales, overdue tax, running finance fully used.",
+        "Nine symptom questions answered Yes / No / Not sure (nothing pre-selected), e.g. "
+        "delaying suppliers, customers paying late, stock piling up, sales up but cash down, "
+        "using personal money, planning expansion, one customer > 40% of sales, overdue tax, "
+        "running finance fully used.",
     ])
     story += [P("Outputs", "h2")]
     story += bullets([
@@ -305,6 +306,17 @@ def build(url: str, out: Path):
               code_block(certainty.combine),
               P("Example: R28 gives *Weak credit control* CF 0.60 and R59 gives 0.50 → "
                 "0.60 + 0.50 × (1 − 0.60) = **0.80**."),
+              P("**\"Not sure\" answers.** Each warning-sign question offers Yes / No / Not sure "
+                "with nothing pre-selected; Next and Run diagnosis are blocked until each shown "
+                "question is answered (questions skipped by ask_if still default to No). "
+                "\"Not sure\" is stored as the value `not_sure` with CF = `not_sure_cf` (0.5, in "
+                "thresholds.json). The `yes` condition matches it, so the existing rule "
+                "conclusion CF = rule CF × min(CF of matched facts) halves the conclusion – "
+                "e.g. R69 overdue tax 0.90 → 0.45. Rules needing \"No\" (`not_yes`) do not fire. "
+                "It combines as usual: R28 0.60 with R59 on Not sure (0.25) → **0.70**. A problem "
+                "raised only from Not-sure answers is shown as *Possible* with \"You weren't sure "
+                "about this — worth checking.\", and the HOW trace shows *Not sure (CF 0.50)* "
+                "and the reduced CF."),
               ]
     story += [P("3.6 Conflict resolution and priorities", "h2"),
               table(["Priority", "Rule kind", "Purpose"], [
@@ -447,10 +459,14 @@ def build(url: str, out: Path):
         "**test_consultation_logic.py** – required business name, per-field step validation, "
         "liability check, skipped steps and defaults, navigation, amount parsing, WHY from the "
         "rule base, plain summary and figure meanings.",
+        "**test_not_sure.py** – unanswered questions block Next; Not sure fires the Yes-rule at "
+        "half CF (and uses not_sure_cf from thresholds); Not sure + a numeric rule combine "
+        "(MYCIN); No fires no symptom rule; Not sure is not a No; skipped questions default to No.",
         "**test_app.py** – headless Streamlit AppTest: full wizard run to the report, Next blocked "
         "on empty name / empty cash step, bad amount message, thousand separators, service "
         "business skipping Stock, follow-up questions appearing, back/edit from review, the Why "
-        "link, every sample through Quick Diagnosis, required name there too.",
+        "link, every sample through Quick Diagnosis, required name there too, warning signs "
+        "with no default (blocked until answered, Not sure shown as Possible) in both modes.",
     ])
 
     # ---------------- 8. Deployment ----------------

@@ -8,7 +8,7 @@ WHY  : why is this question asked?      -> which rules use this input fact
 """
 from knowledge_base.formulas import FORMULAS
 from knowledge_base.problems import PROBLEMS
-from knowledge_base.rule_model import Compute
+from knowledge_base.rule_model import NOT_SURE, Compute
 
 
 def _fmt(value):
@@ -20,6 +20,8 @@ def _fmt(value):
         return f"{value:,.2f}"
     if isinstance(value, int):
         return f"{value:,}"
+    if value == NOT_SURE:
+        return "Not sure"
     return str(value)
 
 
@@ -90,9 +92,12 @@ def why_problem(problem: dict, trace) -> str:
     lines.append("Supported by:")
     for rule_id, rule_cf, combined in problem["evidence"]:
         step = steps.get(rule_id)
-        because = "; ".join(t if cmp is True else f"{t} (= {_fmt(a)})"
+        because = "; ".join(t if a is True and cmp is True else f"{t} (= {_fmt(a)})"
                             for t, a, cmp in step.matched) if step else ""
         lines.append(f"- **{rule_id}** (CF {rule_cf:.2f}) because {because}")
+        if step and step.unsure:
+            lines.append("  - You answered *Not sure*, so this rule's CF was reduced "
+                         "(rule CF x min(CF of matched facts)).")
     if len(problem["evidence"]) > 1:
         cfs = [e[1] for e in problem["evidence"]]
         lines.append("")
@@ -194,23 +199,29 @@ def plain_summary(result) -> list:
                          "after fixed costs and loan payments.")
 
     facts = summary_facts(wm)
-    if result.problems:
+    # Problems raised only from "Not sure" answers are not stated as facts
+    certain = [p for p in result.problems if not p.get("unsure")]
+    unsure = [p for p in result.problems if p.get("unsure")]
+    if certain:
         # Cash-runway problems are already described by the cash sentence above,
         # so the "main concern" picks the most serious OTHER problems (no repeats).
         covered = CASH_PROBLEMS if len(sentences) > 1 else set()
-        others = [p for p in result.problems if p["key"] not in covered]
-        phrases = list(dict.fromkeys(concern(p["key"], facts) for p in (others or result.problems)))
+        others = [p for p in certain if p["key"] not in covered]
+        phrases = list(dict.fromkeys(concern(p["key"], facts) for p in (others or certain)))
         lead = ("Besides the cash shortage, the main concern is that"
-                if others and len(others) < len(result.problems)
-                and any(p["key"] in covered for p in result.problems[:1])
+                if others and len(others) < len(certain)
+                and any(p["key"] in covered for p in certain[:1])
                 else "One thing to improve is that" if result.status == "Healthy"
                 else "The main concern is that")
         text = f"{lead} {phrases[0]}"
         if len(phrases) > 1:
             text += f"; also, {phrases[1]}"
         sentences.append(text + ".")
-    else:
+    elif not unsure:
         sentences.append("Keep monitoring your cash every month to stay healthy.")
+    if unsure:
+        sentences.append(f"You weren't sure whether {concern(unsure[0]['key'], facts)} "
+                         "- worth checking.")
     return sentences
 
 

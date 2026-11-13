@@ -78,6 +78,26 @@ Why it matters: data checks must run **before** anything else; the health score
 - Full formula (also implemented): both negative `CF1 + CF2(1 + CF1)`; mixed
   `(CF1 + CF2) / (1 − min(|CF1|, |CF2|))`.
 
+### 6b. "Not sure" answers (uncertain evidence)
+- Every warning-sign question offers **Yes / No / Not sure** with **nothing pre-selected**.
+  Before, an unanswered question silently counted as a real "No". Now **Next** (and **Run
+  diagnosis**) is blocked until each shown question is answered: *"Please choose an answer
+  (pick 'Not sure' if you don't know)."* Questions skipped by `ask_if` still default to No.
+- "Not sure" is stored as the fact value `not_sure` with **CF = `not_sure_cf` = 0.5**
+  (in `thresholds.json`, editable on the Knowledge Acquisition page) instead of 1.0.
+- Rules that test **"symptom = Yes"** (the `yes` condition) also match "Not sure"; no new
+  maths is needed – the existing rule **conclusion CF = rule CF × min(CF of matched facts)**
+  halves the conclusion. Example: R69 (overdue tax, CF 0.90) on "Not sure" → **0.45**.
+  Rules that need "No" (`not_yes`) do **not** fire on "Not sure" – unsure is not a No.
+- It **combines** with other evidence as usual: Hamza Textiles' slow collections give R28
+  0.60; "Not sure" about late customers gives R59 0.50 × 0.5 = 0.25 →
+  0.60 + 0.25 × (1 − 0.60) = **0.70** (with a firm Yes it would be 0.80).
+- **Report:** a problem raised *only* from "Not sure" answers shows as **Possible** with
+  *"You weren't sure about this — worth checking."*; the summary says "You weren't sure
+  whether … – worth checking" instead of stating it as fact. The **HOW** trace shows the
+  answer as *Not sure (CF 0.50)* and the reduced CF of the rule.
+- Safety caps stay cautious: a Critical problem counts for R76 even when it is only Possible.
+
 ## 7. Data sufficiency (Group 0)
 An expert must not conclude without data. Before: an empty form scored "Healthy 100",
 because no problem rule fired. Now:
@@ -97,7 +117,7 @@ because no problem rule fired. Now:
 ## 8. Consultation wizard (designed for a first-time user)
 - **Welcome** (what it does, ~3 minutes, what you get) → **6 steps** → **Review** → **Report**:
   1 Your business (name *required*, type, season) · 2 Cash · 3 Customers who owe you ·
-  4 Stock · 5 Suppliers & loans · 6 Warning signs (Yes/No).
+  4 Stock · 5 Suppliers & loans · 6 Warning signs (Yes / No / Not sure, none pre-selected).
 - `questions.py` holds the **ordered questions**, each with its step, a plain-language label
   (e.g. *"Money customers owe you (receivables)"*), an example value, `required`, `ask_if`
   conditions and a plain `skip_text`.
@@ -210,17 +230,23 @@ The health score shows a coloured number and a marker on the bar, so it is visib
     preserves them (Streamlit Cloud storage is temporary).
 16. **Can a business be Healthy with a serious problem?** No. R76 caps any Critical problem at
     Risky; R78/R79 require zero Critical and zero High problems for Healthy.
-17. **How did you test it?** 102 pytest tests: rule-base integrity, engine termination and
+17. **How did you test it?** 115 pytest tests: rule-base integrity, engine termination and
     conflict resolution, CF maths, safety caps, zero-division, data sufficiency, wizard step
     validation (required business name, missing cash fields, liabilities), skipping and
-    navigation, the plain summary, every sample case, and headless UI tests (AppTest) for the
-    full wizard, blocked Next, back/edit, the Why link and Quick Diagnosis.
+    navigation, the plain summary, every sample case, "Not sure" answers (half CF, MYCIN
+    combination with a numeric rule, No fires nothing, unanswered blocks Next), and headless
+    UI tests (AppTest) for the full wizard, blocked Next, back/edit, the Why link and Quick
+    Diagnosis.
 18. **Why a problem catalog?** One place for each problem's severity, description and decisions;
     several rules can raise the same problem and each works on its own.
 19. **Limitations?** General rule-of-thumb thresholds, user-entered averages, no time series,
     CF values are expert estimates; educational, not financial advice.
 20. **How would you extend it?** Add rules (no engine change), industry-specific threshold sets,
-    a "Not sure" answer with CF < 1 for uncertain inputs, monthly history to detect trends.
+    a sliding certainty for answers ("probably yes" = 0.7), monthly history to detect trends.
+21. **What if the owner does not know an answer?** They pick **Not sure**. It is stored with
+    CF 0.5 (`not_sure_cf`), so "symptom = Yes" rules still fire but at half certainty via
+    rule CF × min(premise CFs) – e.g. overdue tax 0.90 → 0.45, shown as *Possible – worth
+    checking*. Nothing is pre-selected, so silence is never mistaken for a "No".
 
 **Bonus quick answers**
 - *Why not `experta`?* Unmaintained and breaks on new Python versions; our own engine

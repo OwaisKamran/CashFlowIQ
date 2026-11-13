@@ -12,7 +12,9 @@ fields.py - Renders one Question as a Streamlit input, shared by both pages.
 import streamlit as st
 
 from engine.consultation import why_asking
-from knowledge_base.questions import BUSINESS_TYPE_LABELS, SEASON_LABELS, parse_amount
+from knowledge_base.questions import (
+    BUSINESS_TYPE_LABELS, SEASON_LABELS, YES_NO_ANSWERS, parse_amount,
+)
 from knowledge_base.rules import RULES
 from ui.components import e
 
@@ -27,8 +29,9 @@ def to_widget(q, value):
     """Stored (parsed) value -> what the widget holds."""
     if q.kind == "amount":
         return "" if value is None else f"{value:,.0f}"
-    if q.kind == "yesno":
-        return "Yes" if value else "No"
+    if q.kind == "yesno":                                  # None = nothing selected yet
+        return next((label for label, v in YES_NO_ANSWERS.items() if v == value and
+                     type(v) is type(value)), None)
     if q.kind == "checkbox":
         return bool(value)
     if q.kind == "choice":
@@ -44,7 +47,7 @@ def read(q, prefix):
     if q.kind == "amount":
         return parse_amount(raw)
     if q.kind == "yesno":
-        return raw == "Yes", None
+        return YES_NO_ANSWERS.get(raw), None               # None = not answered
     if q.kind == "checkbox":
         return bool(raw), None
     if q.kind == "text":
@@ -55,8 +58,7 @@ def read(q, prefix):
 def ensure_widget(q, prefix, store):
     key = widget_key(prefix, q)
     if key not in st.session_state:
-        boolean = q.kind in ("yesno", "checkbox")
-        st.session_state[key] = to_widget(q, store.get(q.key, q.default if boolean else None))
+        st.session_state[key] = to_widget(q, store.get(q.key, q.default if q.kind == "checkbox" else None))
 
 
 def _format_amount(key):
@@ -102,7 +104,8 @@ def render(q, prefix, store, error=None, why=True):
                 st.selectbox(q.text, q.options, key=key, help=hint,
                              format_func=lambda o: labels.get(o, o))
         elif q.kind == "yesno":
-            st.radio(q.text, ["No", "Yes"], key=key, horizontal=True, help=hint or None)
+            st.radio(q.text, list(YES_NO_ANSWERS), index=None, key=key, horizontal=True,
+                     help=hint or None)
         elif q.kind == "checkbox":
             st.checkbox(q.text, key=key, help=hint or None)
         if error:                                     # error directly under the field
@@ -126,7 +129,9 @@ def show_answer(q, value) -> str:
     """Formatted answer for the review table."""
     if q.kind == "choice":
         return CHOICE_LABELS.get(q.key, {}).get(value, str(value))
-    if q.kind in ("yesno", "checkbox"):
+    if q.kind == "yesno":
+        return to_widget(q, value) or "-"
+    if q.kind == "checkbox":
         return "Yes" if value else "No"
     if value is None or value == "":
         return "-"

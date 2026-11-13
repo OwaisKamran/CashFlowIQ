@@ -42,7 +42,8 @@ def test_all_threshold_references_exist():
 def test_no_unused_thresholds():
     used = {c.value.name for r in RULES for c in r.conditions if isinstance(c.value, T)}
     scoring = {"weight_critical", "weight_high", "weight_medium", "weight_low",
-               "strength_bonus", "max_strength_bonus"}
+               "strength_bonus", "max_strength_bonus",
+               "not_sure_cf"}           # CF given to a "Not sure" answer by diagnose()
     assert set(load_thresholds()) - used - scoring == set()
 
 

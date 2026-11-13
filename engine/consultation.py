@@ -6,7 +6,8 @@ consultation.py - Step-by-step consultation (wizard) logic. No UI code here.
 * A step whose questions are all skipped is skipped as a whole.
 * validate_step() blocks "Next" until the step's required answers are given.
 * resolve() turns the user's answers into the complete fact set for diagnose():
-  skipped or blank optional questions get their default (0 / No).
+  skipped or blank optional questions get their default (0 / No). Shown
+  Yes/No/Not sure questions have NO default - they must be answered.
 
 Everything is recomputed from the answers every time, so going back and
 changing an answer automatically re-decides which later questions are needed.
@@ -16,7 +17,9 @@ from dataclasses import dataclass, field
 from engine.explanation import rules_using_fact
 from engine.inference_engine import evaluate_condition
 from engine.working_memory import WorkingMemory
-from knowledge_base.questions import LIABILITY_STEP, QUESTIONS, STEPS, questions_in_step
+from knowledge_base.questions import (
+    LIABILITY_STEP, NO_ANSWER_ERROR, QUESTIONS, STEPS, questions_in_step,
+)
 from knowledge_base.rules import LIABILITY_FACTS
 
 REVIEW_STEP = max(STEPS) + 1
@@ -95,6 +98,9 @@ def validate_step(step: int, answers: dict, thresholds: dict) -> tuple:
         if q.kind == "text":
             if not str(value or "").strip():
                 errors[q.key] = f"Please enter your {q.label.lower()}."
+        elif q.kind == "yesno":                   # no default: an unanswered question is not a "No"
+            if value is None:
+                errors[q.key] = NO_ANSWER_ERROR
         elif q.required and value is None:
             errors[q.key] = {
                 "amount": "Please enter an amount. Enter 0 if you have none.",
