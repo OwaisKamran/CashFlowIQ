@@ -10,7 +10,9 @@ from ui.components import (
 
 st.set_page_config(page_title="CashFlow IQ", page_icon=":material/account_balance:",
                    layout="wide")
-st.logo(str(Path(__file__).parent / "ui" / "logo.svg"), size="large")
+UI = Path(__file__).parent / "ui"
+st.logo(str(UI / "logo.svg"), size="large",            # white text for the dark sidebar
+        icon_image=str(UI / "logo_icon.svg"))          # icon only when the sidebar is collapsed
 init_state()
 inject_css()
 enable_enter_navigation()        # Enter moves to the next box

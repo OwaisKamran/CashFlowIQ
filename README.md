@@ -95,6 +95,7 @@ CashFlowIQ/
 ├── ui/
 │   ├── styles.py               #   colour palette (named constants), type scale and CSS
 │   ├── logo.svg                #   sidebar logo
+│   ├── logo_icon.svg           #   icon-only logo for the top bar (sidebar collapsed)
 │   ├── components.py           #   header band, pills, formatting (Rs 1,250,000), score bar, stepper
 │   ├── fields.py               #   one question -> input, error, "Why are you asking?"
 │   └── report.py               #   the diagnosis report shared by both modes

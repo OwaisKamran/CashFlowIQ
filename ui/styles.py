@@ -329,7 +329,7 @@ CSS = f"""
   .cf-tip b {{ color: {NAVY}; }}
 
   @media (max-width: 640px) {{
-    [data-testid="stMainBlockContainer"] {{ padding-top: 1rem; }}
+    [data-testid="stMainBlockContainer"] {{ padding-top: 4.5rem; }}   /* start below the top bar */
     .cf-page .t, .cf-hero .t {{ font-size: 26px; }}
     [class*="st-key-cfhero"] {{ padding: 1.4rem 1.2rem 1.2rem; }}
     .cf-stepper .name {{ display: none; }}
